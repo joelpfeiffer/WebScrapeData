@@ -3,8 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Brandstofprijzen Trend</title>
-
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -26,7 +24,6 @@
         --canvas-border: #ccc;
     }
 
-    /* DARK MODE */
     [data-theme="dark"] {
         --bg: #121212;
         --text: #e5e5e5;
@@ -38,10 +35,26 @@
         --canvas-border: #555;
     }
 
-    select {
-        padding: 8px;
-        font-size: 16px;
-        margin-left: 10px;
+    .topnav {
+        text-align: right;
+        margin-bottom: 20px;
+    }
+
+    .switchPageBtn {
+        padding: 8px 14px;
+        border: 1px solid var(--button-border);
+        background: var(--button-bg);
+        color: var(--text);
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    #trendChart {
+        width: 900px;
+        height: 400px;
+        background: var(--canvas-bg);
+        border: 1px solid var(--canvas-border);
+        margin-top: 20px;
     }
 
     button {
@@ -58,31 +71,23 @@
         background: var(--button-active-bg);
         color: var(--button-active-text);
     }
-
-    #trendChart {
-        width: 700px !important;
-        height: 350px !important;
-        background: var(--canvas-bg);
-        border: 1px solid var(--canvas-border);
-        margin-top: 20px;
-    }
 </style>
 </head>
 
 <body>
 
-    
-<div style="text-align:right; margin-bottom:20px;">
-    <button onclick="window.location.href='vergelijking.html'"
-            style="padding:8px 14px; cursor:pointer;">
-        Ga naar Vergelijkingspagina
-    </button>
+<!-- ▲ PAGE SWITCH BUTTON -->
+<div class="topnav">
+    vergelijking.html
+        <button class="switchPageBtn">➡ Ga naar Vergelijkingstabel</button>
+    </a>
 </div>
+
+<!-- ▲ DARK MODE TOGGLE -->
+<button id="themeToggle">🌙 Donkere modus</button>
 
 
 <h1>Brandstofprijzen Trend</h1>
-
-<button id="themeToggle">🌙 Dark Mode</button>
 
 <label for="landSelect">Selecteer land:</label>
 <select id="landSelect">
@@ -103,7 +108,6 @@
 
 <canvas id="trendChart"></canvas>
 
-<!-- 🟢 DIT WAS FOUT — DIT IS NU GOED -->
 <script src="script.js"></script>
 
 </body>
