@@ -2,7 +2,7 @@ let fullData = [];
 let chart = null;
 
 /* -------------------------
-   DARK MODE TOGGLE
+   DARK MODE
 --------------------------*/
 const root = document.documentElement;
 const toggle = document.getElementById("themeToggle");
@@ -15,7 +15,7 @@ toggle.addEventListener("click", () => {
 });
 
 /* -------------------------
-   LOAD COUNTRY LIST (index.json)
+   LOAD COUNTRIES (index.json)
 --------------------------*/
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(res => res.json())
@@ -32,15 +32,12 @@ fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/da
         });
     });
 
-/* -------------------------
-   WHEN COUNTRY SELECTED
---------------------------*/
 document.getElementById("landSelect").addEventListener("change", function () {
     loadCSV(this.value);
 });
 
 /* -------------------------
-   LOAD CSV FILE
+   CSV LOADER
 --------------------------*/
 function loadCSV(land) {
     const url =
@@ -55,25 +52,21 @@ function loadCSV(land) {
 }
 
 /* -------------------------
-   PARSE PRICE STRING → FLOAT
+   PRICE → FLOAT
 --------------------------*/
 function toNumber(v) {
     if (!v) return null;
-
     v = v.replace(/"/g, "").trim();
     v = v.replace(/[^0-9.,-]/g, "");
-
     if (v.includes(",")) v = v.replace(/,/g, ".");
-
     const parts = v.split(".");
     if (parts.length > 2)
         v = parts[0] + "." + parts.slice(1).join("");
-
     return parseFloat(v);
 }
 
 /* -------------------------
-   PARSE CSV STRING
+   CSV PARSER
 --------------------------*/
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
@@ -91,7 +84,7 @@ function parseCSV(csv) {
 /* -------------------------
    DATASET BUILDER
 --------------------------*/
-function dataset(label, color, values, hasMultiplePoints) {
+function dataset(label, color, values, hasMultiple) {
     return {
         label,
         data: values,
@@ -99,18 +92,15 @@ function dataset(label, color, values, hasMultiplePoints) {
         backgroundColor: color,
         fill: false,
         tension: 0.3,
-
-        showLine: hasMultiplePoints,
-
-        pointRadius: hasMultiplePoints ? 5 : 8,
-        pointHoverRadius: hasMultiplePoints ? 7 : 10,
-
-        borderWidth: hasMultiplePoints ? 2 : 0
+        showLine: hasMultiple,
+        pointRadius: hasMultiple ? 5 : 8,
+        pointHoverRadius: hasMultiple ? 7 : 10,
+        borderWidth: hasMultiple ? 2 : 0
     };
 }
 
 /* -------------------------
-   CREATE TREND CHART
+   TREND CHART  (LEGEND ONDER!)
 --------------------------*/
 function updateChart(data) {
     const ctx = document.getElementById("trendChart").getContext("2d");
@@ -124,17 +114,17 @@ function updateChart(data) {
     );
 
     const yMax = maxValue + 0.2;
-    const multiple = data.length > 1;
+    const multi = data.length > 1;
 
     chart = new Chart(ctx, {
         type: "line",
         data: {
             labels: data.map(d => d.date),
             datasets: [
-                dataset("E5", "#0078FF", data.map(d => d.E5), multiple),
-                dataset("E10", "#FF8800", data.map(d => d.E10), multiple),
-                dataset("Diesel", "#00AA00", data.map(d => d.Diesel), multiple),
-                dataset("LPG", "#AA00AA", data.map(d => d.LPG), multiple)
+                dataset("E5", "#0078FF", data.map(d => d.E5), multi),
+                dataset("E10", "#FF8800", data.map(d => d.E10), multi),
+                dataset("Diesel", "#00AA00", data.map(d => d.Diesel), multi),
+                dataset("LPG", "#AA00AA", data.map(d => d.LPG), multi)
             ]
         },
         options: {
@@ -145,21 +135,16 @@ function updateChart(data) {
                 y: {
                     min: 0,
                     max: yMax,
-                    ticks: {
-                        stepSize: 0.1,
-                        precision: 2
-                    }
+                    ticks: { stepSize: 0.1, precision: 2 }
                 }
             },
 
             plugins: {
                 legend: {
+                    position: "bottom",    // <-- DE FIX VAN ALLES
                     labels: {
-                        // 🔥 FIX: Zorg voor kleine, consistente blokjes
-                        usePointStyle: false,
                         boxWidth: 12,
                         boxHeight: 12,
-                        padding: 10,
                         font: { size: 12 }
                     }
                 }
@@ -169,7 +154,7 @@ function updateChart(data) {
 }
 
 /* -------------------------
-   DATE RANGE BUTTONS
+   RANGE BUTTONS
 --------------------------*/
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -187,8 +172,6 @@ document.querySelectorAll("button[data-range]").forEach(btn => {
         }
 
         const days = parseInt(range);
-        const filtered = fullData.slice(-days);
-
-        updateChart(filtered);
+        updateChart(fullData.slice(-days));
     });
 });
