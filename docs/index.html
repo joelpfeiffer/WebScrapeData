@@ -7,26 +7,32 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
+
     select { padding: 8px; font-size: 16px; margin-bottom: 20px; }
 
     button {
         padding: 6px 12px;
         margin: 3px;
-        border: 1px solid #555;
+        border: 1px solid #444;
         background: white;
         cursor: pointer;
         border-radius: 4px;
     }
-
     button.active {
         background: #0078ff;
         color: white;
     }
 
-    canvas {
-        margin-top: 20px;
+    /* 🔥 VASTE GRAFIEK GROOTTE */
+    #trendChart {
+        width: 700px !important;
+        height: 350px !important;
+        max-width: 700px;
+        max-height: 350px;
+        border: 1px solid #ccc;
         background: white;
+        display: block;
     }
 </style>
 </head>
@@ -37,7 +43,7 @@
 
 <label for="landSelect">Selecteer land:</label>
 <select id="landSelect">
-    <option>Data laden...</option>
+    <option>Data laden…</option>
 </select>
 
 <div class="controls">
@@ -52,7 +58,7 @@
     <button data-range="all" class="active">Alles</button>
 </div>
 
-<canvas id="trendChart" width="900" height="400"></canvas>
+<canvas id="trendChart"></canvas>
 
 <script src="script.js"></script>
 
