@@ -56,13 +56,14 @@ def normalize_date(date_str: str) -> str:
 
 
 def extract_date_from_page(page) -> str:
-    """Bulletproof datum extractie via regex."""
     try:
         body_text = page.inner_text("body")
 
+        import re
         match = re.search(
-            r"Laatst bijgewerkt[: ]+(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
-            body_text
+            r"Laatst\s+bijgewerkt.*?(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
+            body_text,
+            re.IGNORECASE | re.DOTALL
         )
 
         if match:
@@ -74,8 +75,10 @@ def extract_date_from_page(page) -> str:
 
     except Exception as e:
         print("FOUT bij datum ophalen:", e)
+
         fallback = datetime.now().strftime("%Y-%m-%d")
         print("Fallback datum:", fallback)
+
         return fallback
 
 
