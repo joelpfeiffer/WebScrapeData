@@ -15,23 +15,21 @@ toggle.addEventListener("click", () => {
 });
 
 /* -------------------------
-   LOAD CSV LIST (FROM docs/data/)
+   LOAD CSV LIST (index.json)
 --------------------------*/
-fetch("https://api.github.com/repos/joelpfeiffer/WebScrapeData/contents/docs/data")
+fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(res => res.json())
-    .then(files => {
+    .then(list => {
         const select = document.getElementById("landSelect");
         select.innerHTML = "";
 
-        files
-            .filter(f => f.name.endsWith(".csv"))
-            .forEach(f => {
-                const land = f.name.replace(".csv", "");
-                const opt = document.createElement("option");
-                opt.value = land;
-                opt.textContent = land.charAt(0).toUpperCase() + land.slice(1);
-                select.appendChild(opt);
-            });
+        list.forEach(file => {
+            const land = file.replace(".csv", "");
+            const opt = document.createElement("option");
+            opt.value = land;
+            opt.textContent = land.charAt(0).toUpperCase() + land.slice(1);
+            select.appendChild(opt);
+        });
     });
 
 document.getElementById("landSelect").addEventListener("change", function () {
@@ -55,21 +53,16 @@ function loadCSV(land) {
 /* -------------------------
    CLEAN + PARSE NUMERIC VALUES
 --------------------------*/
-function toNumber(value) {
-    if (!value) return null;
-
-    value = value.replace(/"/g, "").trim();
-    value = value.replace(/[^0-9.,-]/g, "");
-
-    if (value.includes(",")) {
-        value = value.replace(/,/g, ".");
-    }
-
-    return parseFloat(value);
+function toNumber(v) {
+    if (!v) return null;
+    v = v.replace(/"/g, "").trim();
+    v = v.replace(/[^0-9.,-]/g, "");
+    if (v.includes(",")) v = v.replace(/,/g, ".");
+    return parseFloat(v);
 }
 
 /* -------------------------
-   PARSE WHOLE CSV FILE
+   PARSE CSV FILE
 --------------------------*/
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
@@ -89,9 +82,7 @@ function parseCSV(csv) {
 --------------------------*/
 function updateChart(data) {
     const ctx = document.getElementById("trendChart").getContext("2d");
-
     if (chart) chart.destroy();
-
     const multiple = data.length > 1;
 
     chart = new Chart(ctx, {
@@ -127,11 +118,12 @@ function dataset(label, color, values, showLine) {
 }
 
 /* -------------------------
-   DATE RANGE FILTER BUTTONS
+   RANGE FILTER
 --------------------------*/
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
-        document.querySelectorAll("button[data-range]").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll("button[data-range]")
+            .forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
 
         let range = btn.getAttribute("data-range");
@@ -143,7 +135,7 @@ document.querySelectorAll("button[data-range]").forEach(btn => {
 
         const days = parseInt(range);
         const filtered = fullData.slice(-days);
-
         updateChart(filtered);
     });
 });
+``
