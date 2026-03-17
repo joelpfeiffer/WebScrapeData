@@ -1,9 +1,12 @@
-name: Scrape ANWB (Playwright)
+name: Scrape ANWB brandstofprijzen
 
 on:
   schedule:
-    - cron: "0 0 * * *"
-  workflow_dispatch:
+    - cron: "0 0 * * *"   # Dagelijks om 00:00 UTC
+  workflow_dispatch:        # Handmatig starten mogelijk
+
+permissions:
+  contents: write           # Nodig om commits te kunnen pushen
 
 jobs:
   scrape:
@@ -18,19 +21,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install requirements
+      - name: Install Python packages
         run: pip install -r requirements.txt
 
-      - name: Install Playwright browsers
+      - name: Install Playwright Chromium
         run: playwright install chromium
 
-      - name: Run scraper
+      - name: Run ANWB scraper
         run: python script/scrape_anwb.py
 
-      - name: Commit & push results
+      - name: Commit & push CSV output
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add data/brandstofprijzen.csv
-          git commit -m "Update ANWB fuel prices" || echo "Geen wijzigingen"
+          git add data/*.csv
+          git commit -m "Automatische brandstofupdate" || echo "Geen wijzigingen"
           git push
