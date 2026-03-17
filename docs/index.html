@@ -30,6 +30,7 @@
         border-collapse: collapse;
         width: 100%;
         background: var(--table-bg);
+        margin-top: 25px;
     }
 
     th, td {
@@ -40,7 +41,6 @@
 
     th {
         background: var(--border);
-        color: var(--text);
     }
 
     select {
@@ -60,6 +60,14 @@
         background: #0078ff;
         color: white;
     }
+
+    #trendChart {
+        width: 900px;
+        height: 400px;
+        background: var(--table-bg);
+        border: 1px solid var(--border);
+        margin-top: 20px;
+    }
 </style>
 </head>
 
@@ -69,12 +77,20 @@
 
 <button id="themeToggle">🌙 Dark Mode</button>
 
-<br /><br />
+<br/><br/>
 
-<label for="landSelect">Selecteer landen (max 4):</label><br />
+<label for="singleLand">Trend voor land:</label>
+<select id="singleLand" style="min-width: 200px;"></select>
+
+<!-- Trend grafiek -->
+<canvas id="trendChart"></canvas>
+
+<br/><br/>
+
+<label for="landSelect">Vergelijk meerdere landen (max 4):</label><br/>
 <select id="landSelect" multiple size="6" style="min-width: 250px; margin-top:10px;"></select>
 
-<br /><br />
+<br/><br/>
 
 <div>
     <button data-range="7">1 week</button>
@@ -87,8 +103,6 @@
     <button data-range="730">2 jaar</button>
     <button data-range="all" class="active">Alles</button>
 </div>
-
-<br />
 
 <div id="comparisonTable"></div>
 
