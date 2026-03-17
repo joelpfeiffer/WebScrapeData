@@ -15,7 +15,7 @@ toggle.addEventListener("click", () => {
 });
 
 /* -------------------------
-   LOAD CSV LIST FROM docs/data/index.json
+   LOAD CSV LIST FROM index.json
 --------------------------*/
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(res => res.json())
@@ -33,14 +33,14 @@ fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/da
     });
 
 /* -------------------------
-   WHEN SELECT CHANGES → LOAD CSV
+   LAND SELECT HANDLER
 --------------------------*/
 document.getElementById("landSelect").addEventListener("change", function () {
     loadCSV(this.value);
 });
 
 /* -------------------------
-   LOAD INDIVIDUAL CSV FILE
+   LOAD CSV FILE FOR LAND
 --------------------------*/
 function loadCSV(land) {
     const url = `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
@@ -54,7 +54,7 @@ function loadCSV(land) {
 }
 
 /* -------------------------
-   CONVERT ANY PRICE STRING TO FLOAT
+   PARSE NUMBER STRING → FLOAT
 --------------------------*/
 function toNumber(v) {
     if (!v) return null;
@@ -62,12 +62,12 @@ function toNumber(v) {
     v = v.replace(/"/g, "").trim();
     v = v.replace(/[^0-9.,-]/g, "");
 
-    // comma → dot
+    // convert comma → dot
     if (v.includes(",")) {
         v = v.replace(/,/g, ".");
     }
 
-    // safety: reduce multiple dots
+    // reduce multiple dots
     const parts = v.split(".");
     if (parts.length > 2) {
         v = parts[0] + "." + parts.slice(1).join("");
@@ -77,7 +77,7 @@ function toNumber(v) {
 }
 
 /* -------------------------
-   PARSE CSV → ARRAY
+   PARSE CSV → RECORDS
 --------------------------*/
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
@@ -93,7 +93,7 @@ function parseCSV(csv) {
 }
 
 /* -------------------------
-   CREATE A DATASET
+   DATASET BUILDER
 --------------------------*/
 function dataset(label, color, values, showLine) {
     return {
@@ -110,15 +110,14 @@ function dataset(label, color, values, showLine) {
 }
 
 /* -------------------------
-   DRAW TREND CHART
+   TREND CHART — FIXED LEGEND & FIXED SCALING
 --------------------------*/
 function updateChart(data) {
     const ctx = document.getElementById("trendChart").getContext("2d");
 
     if (chart) chart.destroy();
 
-    // ❗ FIX ZOOM PROBLEM:
-    // Bepaal de grootste waarde van dit land en bouw de y-as daaromheen
+    // Find highest price for proper Y-axis scaling
     const maxValue = Math.max(
         ...data.map(d => d.E5 || 0),
         ...data.map(d => d.E10 || 0),
@@ -126,7 +125,8 @@ function updateChart(data) {
         ...data.map(d => d.LPG || 0)
     );
 
-    const yMax = maxValue + 0.20; // beetje marge
+    // Extra breathing space
+    const yMax = maxValue + 0.2;
     const multiple = data.length > 1;
 
     chart = new Chart(ctx, {
@@ -145,10 +145,25 @@ function updateChart(data) {
             maintainAspectRatio: false,
             scales: {
                 y: {
-                    beginAtZero: true,
-                    suggestedMax: yMax,
+                    min: 0,
+                    max: yMax,
                     ticks: {
-                        stepSize: 0.1
+                        stepSize: 0.1,
+                        precision: 2
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'rect',
+                        boxWidth: 12,
+                        boxHeight: 12,
+                        padding: 20,
+                        font: {
+                            size: 12
+                        }
                     }
                 }
             }
@@ -161,10 +176,13 @@ function updateChart(data) {
 --------------------------*/
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
-        document.querySelectorAll("button[data-range]").forEach(b => b.classList.remove("active"));
+
+        document.querySelectorAll("button[data-range]")
+            .forEach(b => b.classList.remove("active"));
+
         btn.classList.add("active");
 
-        let range = btn.getAttribute("data-range");
+        const range = btn.getAttribute("data-range");
 
         if (range === "all") {
             updateChart(fullData);
@@ -173,7 +191,7 @@ document.querySelectorAll("button[data-range]").forEach(btn => {
 
         const days = parseInt(range);
         const filtered = fullData.slice(-days);
+
         updateChart(filtered);
     });
 });
-``
