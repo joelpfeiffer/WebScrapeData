@@ -67,16 +67,19 @@ function toNumber(v) {
    CSV PARSER
 --------------------------------------- */
 
+
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
     const body = rows.slice(1);
 
     return body.map(r => ({
         date: r[0],
-        Diesel: toNumber(r[1]),  // Kolom 1 = Diesel
-        E10: toNumber(r[2]),     // Kolom 2 = E10
-        E5: toNumber(r[3]),      // Kolom 3 = E5
-        LPG: toNumber(r[4])      // Kolom 4 = LPG
+
+        // ✔ correcte koppeling volgens CSV screenshot:
+        Diesel: toNumber(r[1]), // kolom 1
+        E10: toNumber(r[2]),    // kolom 2
+        E5: toNumber(r[3]),     // kolom 3
+        LPG: toNumber(r[4])     // kolom 4
     }));
 }
 
