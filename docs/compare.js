@@ -1,10 +1,9 @@
 /* ---------------------------------------
-   DARK MODE SYNC (werkt samen met index.html)
+   DARK MODE SYNC
 --------------------------------------- */
 const root = document.documentElement;
 const themeBtn = document.getElementById("themeToggle");
 
-// thema laden
 const savedTheme = localStorage.getItem("theme");
 if (savedTheme) {
     root.setAttribute("data-theme", savedTheme);
@@ -12,7 +11,6 @@ if (savedTheme) {
         savedTheme === "dark" ? "☀️ Licht modus" : "🌙 Donkere modus";
 }
 
-// thema switchen
 themeBtn.addEventListener("click", () => {
     const isDark = root.getAttribute("data-theme") === "dark";
     const newTheme = isDark ? "light" : "dark";
@@ -23,54 +21,51 @@ themeBtn.addEventListener("click", () => {
 });
 
 /* ---------------------------------------
-   MEERDERE LANDEN DATA
---------------------------------------- */
-let allCountryData = {};
-
-/* ---------------------------------------
    HELPERS
 --------------------------------------- */
 
-// veilige formatter voor prijzen (geen crash bij Servië)
 function fmt(v) {
     return (typeof v === "number" && !isNaN(v)) ? v.toFixed(3) : "-";
 }
 
-// €‑waarde parser
 function toNumber(v) {
     if (!v) return null;
-
     v = v.replace(/"/g, "").trim();
     v = v.replace(/[^0-9.,-]/g, "");
-
     if (v.includes(",")) v = v.replace(/,/g, ".");
-
     const parts = v.split(".");
-    if (parts.length > 2) {
-        v = parts[0] + "." + parts.slice(1).join("");
-    }
-
+    if (parts.length > 2) v = parts[0] + "." + parts.slice(1).join("");
     const num = parseFloat(v);
     return isNaN(num) ? null : num;
 }
 
-// CSV parser volgens jouw CSV structuur
 function parseCSV(txt) {
     const rows = txt.trim().split("\n").map(r => r.split(","));
     const body = rows.slice(1);
 
     return body.map(r => ({
-        date: r[0],
+        date: r[0] || "-",
         Diesel: toNumber(r[1]),
-        E10:    toNumber(r[2]),
-        E5:     toNumber(r[3]),
-        LPG:    toNumber(r[4])
+        E10: toNumber(r[2]),
+        E5: toNumber(r[3]),
+        LPG: toNumber(r[4])
     }));
 }
 
+// FIX: gebruik laatste geldige rij
+function getLastValidRow(rows) {
+    for (let i = rows.length - 1; i >= 0; i--) {
+        const r = rows[i];
+        if (r.E5 || r.E10 || r.Diesel || r.LPG) return r;
+    }
+    return { date: "-", E5: null, E10: null, Diesel: null, LPG: null };
+}
+
 /* ---------------------------------------
-   LANDEN LIJST LADEN
+   FETCH LIST
 --------------------------------------- */
+let allCountryData = {};
+
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(r => r.json())
     .then(list => {
@@ -85,38 +80,31 @@ fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/da
     });
 
 /* ---------------------------------------
-   SELECTIE HANDLER
+   HANDLE MULTI SELECT
 --------------------------------------- */
-document.getElementById("multiCountry").addEventListener("change", async function() {
-
+document.getElementById("multiCountry").addEventListener("change", async function () {
     const selected = [...this.selectedOptions].map(o => o.value);
 
-    // maximaal 4 landen
     if (selected.length > 4) {
-        alert("Je kunt maximaal 4 landen tegelijk selecteren.");
+        alert("Maximaal 4 landen tegelijk.");
         this.selectedOptions[4].selected = false;
         return;
     }
 
-    // CSV's ophalen
-    const fetchTasks = selected.map(land =>
+    const loaders = selected.map(land =>
         fetch(`https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`)
             .then(r => r.text())
-            .then(txt => {
-                allCountryData[land] = parseCSV(txt);
-            })
+            .then(txt => allCountryData[land] = parseCSV(txt))
     );
 
-    await Promise.all(fetchTasks);
-
+    await Promise.all(loaders);
     updateTable(selected);
 });
 
 /* ---------------------------------------
-   TABEL GENEREREN
+   RENDER TABLE
 --------------------------------------- */
 function updateTable(landen) {
-
     const div = document.getElementById("comparisonTable");
     div.innerHTML = "";
 
@@ -141,8 +129,8 @@ function updateTable(landen) {
     `;
 
     landen.forEach(land => {
-        const list = allCountryData[land];
-        const last = list[list.length - 1];
+        const rows = allCountryData[land];
+        const last = getLastValidRow(rows);
 
         html += `
         <tr>
@@ -157,7 +145,5 @@ function updateTable(landen) {
     });
 
     html += "</tbody></table>";
-
     div.innerHTML = html;
 }
-``
