@@ -6,7 +6,8 @@ from playwright.sync_api import sync_playwright
 
 URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
 
-LANDEN = ["nederland", "duitsland", "belgie", "frankrijk", "luxemburg"]
+# Zwitserland toegevoegd
+LANDEN = ["nederland", "duitsland", "belgie", "frankrijk", "luxemburg", "zwitserland"]
 
 def normalize_text(s: str) -> str:
     s = unicodedata.normalize("NFKD", s)
@@ -20,12 +21,17 @@ def normalize_price(value: str) -> str:
     return value
 
 def get_csv_path(land):
-    # BASE = map waarin dit script staat (script/)
-    base = os.path.dirname(__file__)
+    """
+    Schrijft CSV's naar:
+    WebScrapeData/docs/data/<land>.csv
+    Dit is nodig omdat GitHub Pages alleen /docs publiceert.
+    """
+    base = os.path.dirname(__file__)         # script/
+    root = os.path.abspath(os.path.join(base, ".."))  # repo root
+
     safe = land.replace(" ", "_")
-    
-    # SCHRIJVEN NAAR docs/data/<land>.csv
-    return os.path.join(base, "..", "docs", "data", f"{safe}.csv")
+
+    return os.path.join(root, "docs", "data", f"{safe}.csv")
 
 def scrape_anwb():
 
@@ -58,6 +64,7 @@ def scrape_anwb():
             if not cols:
                 continue
 
+            # Eerste rij = originele header
             if header is None:
                 header = cols[1:]  # verwijder "Land"
                 continue
@@ -82,6 +89,7 @@ def scrape_anwb():
         file_exists = os.path.isfile(csv_path)
         last_date = None
 
+        # laatst bekende datum
         if file_exists:
             with open(csv_path, "r", encoding="utf-8") as f:
                 lines = list(csv.reader(f))
@@ -94,11 +102,13 @@ def scrape_anwb():
 
         rows_to_write = []
 
+        # voeg header toe bij eerste keer
         if not file_exists:
             rows_to_write.append(["Datum (ANWB)"] + header)
 
         rows_to_write.append([updated_date] + row)
 
+        # zorg dat docs/data/ bestaat
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
 
         with open(csv_path, "a", newline="", encoding="utf-8") as f:
