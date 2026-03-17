@@ -1,17 +1,24 @@
 import os
 import csv
+import unicodedata
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
 
-# De landen die we willen scrapen (toegevoegd: luxemburg)
-LANDEN = ["nederland", "duitsland", "belgië", "frankrijk", "zwitserland", "luxemburg"]
+# Doellanden (genormaliseerd, zonder accenten)
+LANDEN = ["nederland", "duitsland", "belgie", "frankrijk", "zwitserland", "luxemburg"]
 
-# Bestandsnamen voor elk land
+def normalize(s: str) -> str:
+    """Verwijder accenten en zet lowercase."""
+    s = s.strip().lower()
+    s = unicodedata.normalize("NFKD", s)
+    return "".join(c for c in s if not unicodedata.combining(c))
+
 def get_csv_path(land):
     base = os.path.dirname(__file__)
-    return os.path.join(base, "..", "data", f"{land}.csv")
+    safe_name = land.replace(" ", "_")
+    return os.path.join(base, "..", "data", f"{safe_name}.csv")
 
 def scrape_anwb():
 
@@ -19,13 +26,12 @@ def scrape_anwb():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        print("Pagina laden...")
+        print("Pagina laden…")
         page.goto(URL, timeout=60000)
 
-        # Wacht op de tabel
         page.wait_for_selector("table", timeout=20000)
 
-        # ---- DATUM SCRAPEN ("Laatst bijgewerkt:") ----
+        # ---- DATUM (“Laatst bijgewerkt:”) ----
         try:
             updated_element = page.get_by_text("Laatst bijgewerkt")
             updated_text = updated_element.inner_text().strip()
@@ -43,6 +49,7 @@ def scrape_anwb():
 
         for row in rows:
             cols = [c.inner_text().strip() for c in row.query_selector_all("th, td")]
+
             if not cols:
                 continue
 
@@ -51,52 +58,52 @@ def scrape_anwb():
                 header = cols
                 continue
 
-            # Check landnaam in kolom 0
-            landnaam = cols[0].lower()
+            # Normaliseer het land zoals het op ANWB staat
+            landnaam_norm = normalize(cols[0])
 
-            if landnaam in land_data:
-                land_data[landnaam] = cols
+            if landnaam_norm in land_data:
+                print(f"Gevonden land: {landnaam_norm}")
+                land_data[landnaam_norm] = cols
 
         browser.close()
 
     # ---- OPSLAG PER LAND ----
     for land, row in land_data.items():
+
         if row is None:
-            print(f"Waarschuwing: geen data gevonden voor {land}")
+            print(f"⚠️  Geen data gevonden voor {land}")
             continue
 
         csv_path = get_csv_path(land)
         file_exists = os.path.isfile(csv_path)
         last_date = None
 
-        # Als bestand bestaat → laatste datum lezen
+        # Bestand bestaat → lees laatste datum
         if file_exists:
             with open(csv_path, "r", encoding="utf-8") as f:
                 reader = list(csv.reader(f))
                 if len(reader) > 1:
                     last_date = reader[-1][0]
 
-        # Als datum gelijk is → overslaan
+        # Als de datum al bestaat → skip
         if last_date == updated_date:
             print(f"{land}: datum {updated_date} bestaat al → skip")
             continue
 
-        output_rows = []
+        rows_to_write = []
 
-        # Eerste keer → header toevoegen
         if not file_exists:
-            output_rows.append(["Datum (ANWB)"] + header)
+            rows_to_write.append(["Datum (ANWB)"] + header)
 
-        # Nieuwe rij
-        output_rows.append([updated_date] + row)
+        rows_to_write.append([updated_date] + row)
 
-        # Wegschrijven
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+
         with open(csv_path, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerows(output_rows)
+            writer.writerows(rows_to_write)
 
-        print(f"{land}: nieuwe rij toegevoegd ({updated_date})")
+        print(f"✔️ Nieuwe rij toegevoegd voor {land} ({updated_date})")
 
 if __name__ == "__main__":
     scrape_anwb()
