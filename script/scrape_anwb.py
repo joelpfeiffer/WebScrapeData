@@ -1,6 +1,7 @@
 import os
 import csv
 import unicodedata
+import re
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
@@ -46,13 +47,36 @@ def normalize_land(land: str) -> str:
 
 
 def normalize_date(date_str: str) -> str:
-    """Zet datum om naar YYYY-MM-DD."""
     for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y"):
         try:
             return datetime.strptime(date_str.strip(), fmt).strftime("%Y-%m-%d")
         except:
             continue
     return date_str.strip()
+
+
+def extract_date_from_page(page) -> str:
+    """Bulletproof datum extractie via regex."""
+    try:
+        body_text = page.inner_text("body")
+
+        match = re.search(
+            r"Laatst bijgewerkt[: ]+(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
+            body_text
+        )
+
+        if match:
+            raw_date = match.group(1)
+            print("FOUND (regex):", raw_date)
+            return normalize_date(raw_date)
+
+        raise ValueError("Datum niet gevonden")
+
+    except Exception as e:
+        print("FOUT bij datum ophalen:", e)
+        fallback = datetime.now().strftime("%Y-%m-%d")
+        print("Fallback datum:", fallback)
+        return fallback
 
 
 def get_csv_path(land: str) -> str:
@@ -70,15 +94,8 @@ def scrape_anwb():
         page.goto(URL, timeout=60000)
         page.wait_for_selector("table", timeout=30000)
 
-        # Datum ophalen
-        try:
-            updated = page.get_by_text("Laatst bijgewerkt").inner_text().strip()
-            updated_date = updated.split(":")[1].strip()
-        except:
-            updated_date = datetime.now().strftime("%Y-%m-%d")
-
-        updated_date = normalize_date(updated_date)
-        print("▶ Datum:", updated_date)
+        updated_date = extract_date_from_page(page)
+        print("▶ Datum gebruikt:", updated_date)
 
         rows = page.query_selector_all("table tr")
 
@@ -105,13 +122,11 @@ def scrape_anwb():
 
         browser.close()
 
-    # CSV schrijven
     for land_norm, info in all_countries.items():
         csv_path = get_csv_path(land_norm)
         file_exists = os.path.isfile(csv_path)
         last_date = None
 
-        # Bestaande CSV lezen
         if file_exists:
             with open(csv_path, "r", encoding="utf-8") as f:
                 lines = [row for row in csv.reader(f) if row]
@@ -121,18 +136,15 @@ def scrape_anwb():
 
         print("DEBUG:", info["display"], "| last:", last_date, "| new:", updated_date)
 
-        # Skip als datum al bestaat
         if last_date == updated_date:
             print("⏭", info["display"], "heeft al", updated_date)
             continue
 
         rows_out = []
 
-        # Header toevoegen als nieuw bestand
         if not file_exists:
             rows_out.append(["Datum (ANWB)"] + header)
 
-        # Nieuwe rij
         rows_out.append([updated_date] + info["values"])
 
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
