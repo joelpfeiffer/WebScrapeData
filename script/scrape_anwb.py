@@ -1,45 +1,40 @@
-import requests
-from bs4 import BeautifulSoup
-import csv
 import os
-from datetime import datetime
+import csv
+from playwright.sync_api import sync_playwright
 
 URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "brandstofprijzen.csv")
 
 def scrape_anwb():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
 
-    # User-Agent om blokkeerde content te voorkomen
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
-    }
+        print("Pagina laden...")
+        page.goto(URL, timeout=60000)
 
-    response = requests.get(URL, headers=headers, timeout=10)
-    response.raise_for_status()
+        # Even wachten tot tabel zichtbaar is (ANWB laadt soms vertraagd)
+        page.wait_for_selector("table", timeout=15000)
 
-    soup = BeautifulSoup(response.text, "html.parser")
+        print("Tabel gevonden, uitlezen...")
+        rows = page.query_selector_all("table tr")
 
-    # Vind de eerste tabel
-    table = soup.find("table")
+        data = []
+        for row in rows:
+            cols = row.query_selector_all("th, td")
+            data.append([c.inner_text().strip() for c in cols])
 
-    if not table:
-        print("DEBUG PAGE OUTPUT:")
-        print(response.text[:1000])  # Laat de eerste 1000 chars zien in logs
-        raise ValueError("Geen tabel gevonden op ANWB pagina")
+        browser.close()
 
-    rows = table.find_all("tr")
-
-    data = []
-    for row in rows:
-        cols = [col.get_text(strip=True) for col in row.find_all(["td", "th"])]
-        if cols:
-            data.append(cols)
+    # Opslaan naar CSV
+    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
 
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerows(data)
 
-    print(f"{len(data)} rijen opgeslagen in {OUTPUT_FILE} op {datetime.now()}")
+    print(f"✔️ {len(data)} rijen opgeslagen in {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     scrape_anwb()
+``
