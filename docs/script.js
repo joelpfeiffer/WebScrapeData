@@ -1,9 +1,9 @@
 let fullData = [];
 let chart = null;
 
-/* -------------------------
+/* ---------------------------------------
    DARK MODE
---------------------------*/
+--------------------------------------- */
 const root = document.documentElement;
 const toggle = document.getElementById("themeToggle");
 
@@ -14,9 +14,9 @@ toggle.addEventListener("click", () => {
     if (chart) chart.update();
 });
 
-/* -------------------------
-   LANDEN LIJST LADEN
---------------------------*/
+/* ---------------------------------------
+   LANDEN LADEN
+--------------------------------------- */
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(res => res.json())
     .then(list => {
@@ -32,19 +32,15 @@ fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/da
         });
     });
 
-/* -------------------------
-   COUNTRY SELECTED
---------------------------*/
 document.getElementById("landSelect").addEventListener("change", function () {
     loadCSV(this.value);
 });
 
-/* -------------------------
+/* ---------------------------------------
    CSV LADEN
---------------------------*/
+--------------------------------------- */
 function loadCSV(land) {
-    const url =
-        `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
+    const url = `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
 
     fetch(url)
         .then(res => res.text())
@@ -54,98 +50,83 @@ function loadCSV(land) {
         });
 }
 
-/* -------------------------
-   GETAL OMZETTEN
---------------------------*/
+/* ---------------------------------------
+   STRING NAAR NUMMER
+--------------------------------------- */
 function toNumber(v) {
     if (!v) return null;
     v = v.replace(/"/g, "").trim();
-    v = v.replace(/[^0-9.,]/g, "");
+    v = v.replace(/[^0-9.,-]/g, "");
     if (v.includes(",")) v = v.replace(/,/g, ".");
-    const parts = v.split(".");
+    let parts = v.split(".");
     if (parts.length > 2) v = parts[0] + "." + parts.slice(1).join("");
     return parseFloat(v);
 }
 
-/* -------------------------
-   CSV PARSEN
---------------------------*/
+/* ---------------------------------------
+   CSV PARSER
+--------------------------------------- */
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
     const body = rows.slice(1);
 
-    const data = body.map(r => ({
+    return body.map(r => ({
         date: r[0],
         E5: toNumber(r[1]),
         E10: toNumber(r[2]),
         Diesel: toNumber(r[3]),
         LPG: toNumber(r[4])
     }));
-
-    return data;
 }
 
-/* -------------------------
-   FIX: ALTijd 2 punten zodat Chart.js normaal rendert
---------------------------*/
-function fixOnePointData(data) {
-    if (data.length === 1) {
-        const d = data[0];
-        return [d, { ...d }];
-    }
-    return data;
-}
-
-/* -------------------------
-   FIX: canvas volledig vervangen (Chart.js cache bug)
---------------------------*/
+/* ---------------------------------------
+   CANVAS HARDE RESET
+--------------------------------------- */
 function resetCanvas() {
-    const oldCanvas = document.getElementById("trendChart");
-    const parent = oldCanvas.parentNode;
-    oldCanvas.remove();
+    const old = document.getElementById("trendChart");
+    const parent = old.parentNode;
+    old.remove();
 
-    const newCanvas = document.createElement("canvas");
-    newCanvas.id = "trendChart";
-    newCanvas.width = 700;
-    newCanvas.height = 350;
-
-    parent.appendChild(newCanvas);
+    const canvas = document.createElement("canvas");
+    canvas.id = "trendChart";
+    canvas.width = 700;
+    canvas.height = 350;
+    parent.appendChild(canvas);
 }
 
-/* -------------------------
-   DATASET BOUWER
---------------------------*/
-function dataset(label, color, values) {
+/* ---------------------------------------
+   DATASET MAKER
+--------------------------------------- */
+function dataset(label, color, data) {
     return {
         label,
-        data: values,
+        data,
         borderColor: color,
         backgroundColor: color,
-        fill: false,
         tension: 0.3,
-        showLine: true,     // Altijd lijn tekenen (fix voor legend scaling)
+        fill: false,
+        spanGaps: true,                      // ★★★ FIX: geen gaten, geen rare render
+        cubicInterpolationMode: 'monotone',  // ★★★ FIX: smooth & stabiel bij 1 punt
         pointRadius: 6,
         pointHoverRadius: 8,
         borderWidth: 2
     };
 }
 
-/* -------------------------
-   UPDATE CHART (met Canvas Reset)
---------------------------*/
-function updateChart(rawData) {
-
-    const data = fixOnePointData(rawData);
-
-    resetCanvas(); // <<< BELANGRIJKSTE FIX
+/* ---------------------------------------
+   UPDATE CHART
+--------------------------------------- */
+function updateChart(data) {
+    resetCanvas();
 
     const ctx = document.getElementById("trendChart").getContext("2d");
 
+    // schaal bepalen
     const maxValue = Math.max(
-        ...data.map(d => d.E5 || 0),
-        ...data.map(d => d.E10 || 0),
-        ...data.map(d => d.Diesel || 0),
-        ...data.map(d => d.LPG || 0)
+        ...data.map(d => d.E5),
+        ...data.map(d => d.E10),
+        ...data.map(d => d.Diesel),
+        ...data.map(d => d.LPG)
     );
 
     const yMax = maxValue + 0.2;
@@ -169,10 +150,7 @@ function updateChart(rawData) {
                 y: {
                     min: 0,
                     max: yMax,
-                    ticks: {
-                        precision: 2,
-                        stepSize: 0.1
-                    }
+                    ticks: { stepSize: 0.1, precision: 2 }
                 }
             },
 
@@ -190,15 +168,12 @@ function updateChart(rawData) {
     });
 }
 
-/* -------------------------
-   RANGE FILTER KNOPPEN
---------------------------*/
+/* ---------------------------------------
+   RANGE FILTERS
+--------------------------------------- */
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
-
-        document.querySelectorAll("button[data-range]")
-            .forEach(b => b.classList.remove("active"));
-
+        document.querySelectorAll("button[data-range]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
 
         const range = btn.dataset.range;
@@ -208,9 +183,6 @@ document.querySelectorAll("button[data-range]").forEach(btn => {
             return;
         }
 
-        const days = parseInt(range);
-        const slice = fullData.slice(-days);
-        updateChart(slice);
+        updateChart(fullData.slice(-parseInt(range)));
     });
 });
-``
