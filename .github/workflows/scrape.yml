@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write           # Nodig om CSV's te kunnen pushen
+  contents: write
 
 jobs:
   scrape:
@@ -30,10 +30,11 @@ jobs:
       - name: Run ANWB scraper
         run: python script/scrape_anwb.py
 
-      - name: Commit & push ALL country CSVs
+      - name: Commit & push ALL CSVs
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add data/*.csv
+          git add docs/data/*.csv
           git commit -m "Automatische ANWB update" || echo "Geen wijzigingen"
           git push
+``
