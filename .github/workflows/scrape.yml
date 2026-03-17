@@ -37,4 +37,3 @@ jobs:
           git add docs/data/*.csv
           git commit -m "Automatische ANWB update" || echo "Geen wijzigingen"
           git push
-``
