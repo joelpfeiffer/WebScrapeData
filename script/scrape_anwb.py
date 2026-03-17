@@ -2,13 +2,15 @@ import os
 import csv
 import unicodedata
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from playwright.sync_api import sync_playwright
 
 URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
 
 
 def get_today_date() -> str:
-    return datetime.now().strftime("%Y-%m-%d")
+    now = datetime.now(ZoneInfo("Europe/Amsterdam"))
+    return now.strftime("%Y-%m-%d")
 
 
 def clean_price(value: str) -> str:
@@ -74,7 +76,7 @@ def get_last_date_from_csv(path: str) -> str | None:
 
 def scrape_anwb():
     today = get_today_date()
-    print("▶ Datum (vandaag):", today)
+    print("▶ Datum (NL):", today)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
