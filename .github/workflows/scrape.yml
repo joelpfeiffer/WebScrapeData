@@ -2,7 +2,7 @@ name: Scrape ANWB brandstofprijzen
 
 on:
   schedule:
-    - cron: "0 0 * * *"   # Dagelijks om 00:00 UTC
+    - cron: "37 16 * * *"   # Dagelijks om 16:37 UTC
   workflow_dispatch:        # Handmatig starten mogelijk
 
 permissions:
