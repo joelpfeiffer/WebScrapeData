@@ -13,7 +13,7 @@ def scrape_anwb():
         print("Pagina laden...")
         page.goto(URL, timeout=60000)
 
-        # Even wachten tot tabel zichtbaar is (ANWB laadt soms vertraagd)
+        # Wacht tot de tabel verschijnt
         page.wait_for_selector("table", timeout=15000)
 
         print("Tabel gevonden, uitlezen...")
@@ -26,7 +26,7 @@ def scrape_anwb():
 
         browser.close()
 
-    # Opslaan naar CSV
+    # CSV opslaan
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
 
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
@@ -37,4 +37,3 @@ def scrape_anwb():
 
 if __name__ == "__main__":
     scrape_anwb()
-``
