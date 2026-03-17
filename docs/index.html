@@ -1,16 +1,39 @@
-<h2>Laatste bekende prijzen per land</h2>
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Brandstofprijzen Europa (ANWB)</title>
 
-<table id="latestTable" border="1" cellpadding="6" style="border-collapse: collapse; margin-top: 20px;">
-    <thead>
-        <tr>
-            <th>Land</th>
-            <th>Datum</th>
-            <th>Diesel (B7)</th>
-            <th>E10</th>
-            <th>E5</th>
-            <th>LPG</th>
-        </tr>
-    </thead>
-    <tbody>
-    </tbody>
-</table>
+    https://cdn.jsdelivr.net/npm/chart.js</script>
+    https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js</script>
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        #chartContainer { width: 100%; max-width: 900px; }
+        select, button { font-size: 16px; padding: 6px 12px; margin: 5px; }
+        .btn-group { margin: 15px 0; }
+        table { border-collapse: collapse; margin-top: 25px; }
+        th, td { border: 1px solid black; padding: 6px 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>Brandstofprijzen Europa (ANWB)</h1>
+
+    <p>Kies een land:</p>
+    <select id="landSelect">
+        <option value="nederland">Nederland</option>
+        <option value="belgie">België</option>
+        <option value="duitsland">Duitsland</option>
+        <option value="frankrijk">Frankrijk</option>
+        <option value="luxemburg">Luxemburg</option>
+        <option value="zwitserland">Zwitserland</option>
+    </select>
+
+    <div class="btn-group">
+        <button onclick="setRange('7')">Afgelopen week</button>
+        <button onclick="setRange('30')">Afgelopen maand</button>
+        <button onclick="setRange('60')">2 maanden</button>
+        <button onclick="setRange('90')">3 maanden</button>
+        <button onclick="setRange('365')">1 jaar</button>
+        <button onclick="setRange('730')">2 jaar</button>
