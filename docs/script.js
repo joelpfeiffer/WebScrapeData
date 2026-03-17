@@ -2,16 +2,24 @@ let fullData = [];
 let chart = null;
 
 /* ---------------------------------------
-   DARK MODE
+   DARK MODE + SYNC
 --------------------------------------- */
 const root = document.documentElement;
-const toggle = document.getElementById("themeToggle");
+const themeBtn = document.getElementById("themeToggle");
 
-toggle.addEventListener("click", () => {
+// apply saved theme
+const savedTheme = localStorage.getItem("theme");
+if (savedTheme) {
+    root.setAttribute("data-theme", savedTheme);
+    themeBtn.textContent = savedTheme === "dark" ? "☀️ Licht modus" : "🌙 Donkere modus";
+}
+
+themeBtn.addEventListener("click", () => {
     const isDark = root.getAttribute("data-theme") === "dark";
-    root.setAttribute("data-theme", isDark ? "light" : "dark");
-    toggle.textContent = isDark ? "🌙 Dark Mode" : "☀️ Light Mode";
-    if (chart) chart.update();
+    const newTheme = isDark ? "light" : "dark";
+    root.setAttribute("data-theme", newTheme);
+    localStorage.setItem("theme", newTheme);
+    themeBtn.textContent = newTheme === "dark" ? "☀️ Licht modus" : "🌙 Donkere modus";
 });
 
 /* ---------------------------------------
@@ -51,7 +59,7 @@ function loadCSV(land) {
 }
 
 /* ---------------------------------------
-   STRING NAAR NUMMER
+   PRICE PARSER
 --------------------------------------- */
 function toNumber(v) {
     if (!v) return null;
@@ -66,26 +74,21 @@ function toNumber(v) {
 /* ---------------------------------------
    CSV PARSER
 --------------------------------------- */
-
-
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
     const body = rows.slice(1);
 
     return body.map(r => ({
         date: r[0],
-
-        // ✔ correcte koppeling volgens CSV screenshot:
-        Diesel: toNumber(r[1]), // kolom 1
-        E10: toNumber(r[2]),    // kolom 2
-        E5: toNumber(r[3]),     // kolom 3
-        LPG: toNumber(r[4])     // kolom 4
+        Diesel: toNumber(r[1]),
+        E10: toNumber(r[2]),
+        E5: toNumber(r[3]),
+        LPG: toNumber(r[4])
     }));
 }
 
-
 /* ---------------------------------------
-   CANVAS HARDE RESET
+   CANVAS RESET
 --------------------------------------- */
 function resetCanvas() {
     const old = document.getElementById("trendChart");
@@ -94,39 +97,20 @@ function resetCanvas() {
 
     const canvas = document.createElement("canvas");
     canvas.id = "trendChart";
-    canvas.width = 700;
-    canvas.height = 350;
-    parent.appendChild(canvas);
-}
+    canvas.width = 900;
+    canvas.height = 400;
 
-/* ---------------------------------------
-   DATASET MAKER
---------------------------------------- */
-function dataset(label, color, data) {
-    return {
-        label,
-        data,
-        borderColor: color,
-        backgroundColor: color,
-        tension: 0.3,
-        fill: false,
-        spanGaps: true,                      // ★★★ FIX: geen gaten, geen rare render
-        cubicInterpolationMode: 'monotone',  // ★★★ FIX: smooth & stabiel bij 1 punt
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        borderWidth: 2
-    };
+    parent.appendChild(canvas);
 }
 
 /* ---------------------------------------
    UPDATE CHART
 --------------------------------------- */
 function updateChart(data) {
-    resetCanvas();
 
+    resetCanvas();
     const ctx = document.getElementById("trendChart").getContext("2d");
 
-    // schaal bepalen
     const maxValue = Math.max(
         ...data.map(d => d.E5),
         ...data.map(d => d.E10),
@@ -134,40 +118,31 @@ function updateChart(data) {
         ...data.map(d => d.LPG)
     );
 
-    const yMax = maxValue + 0.2;
+    const yMax = maxValue + 0.15;
 
     chart = new Chart(ctx, {
         type: "line",
         data: {
             labels: data.map(d => d.date),
             datasets: [
-                dataset("E5", "#0078FF", data.map(d => d.E5)),
-                dataset("E10", "#FF8800", data.map(d => d.E10)),
-                dataset("Diesel", "#00AA00", data.map(d => d.Diesel)),
-                dataset("LPG", "#AA00AA", data.map(d => d.LPG))
+                {label:"E5", borderColor:"#0078FF", data:data.map(d=>d.E5), tension:0.2},
+                {label:"E10", borderColor:"#FF8800", data:data.map(d=>d.E10), tension:0.2},
+                {label:"Diesel", borderColor:"#00AA00", data:data.map(d=>d.Diesel), tension:0.2},
+                {label:"LPG", borderColor:"#AA00AA", data:data.map(d=>d.LPG), tension:0.2},
             ]
         },
         options: {
             responsive: false,
             maintainAspectRatio: false,
-
             scales: {
                 y: {
                     min: 0,
                     max: yMax,
-                    ticks: { stepSize: 0.1, precision: 2 }
+                    ticks: { precision: 2 }
                 }
             },
-
             plugins: {
-                legend: {
-                    position: "bottom",
-                    labels: {
-                        boxWidth: 12,
-                        boxHeight: 12,
-                        font: { size: 12 }
-                    }
-                }
+                legend: { position: "bottom" }
             }
         }
     });
@@ -178,6 +153,7 @@ function updateChart(data) {
 --------------------------------------- */
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
+
         document.querySelectorAll("button[data-range]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
 
@@ -188,6 +164,7 @@ document.querySelectorAll("button[data-range]").forEach(btn => {
             return;
         }
 
-        updateChart(fullData.slice(-parseInt(range)));
+        const days = parseInt(range);
+        updateChart(fullData.slice(-days));
     });
 });
