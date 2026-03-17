@@ -15,7 +15,7 @@ toggle.addEventListener("click", () => {
 });
 
 /* -------------------------
-   LOAD CSV LIST (index.json)
+   LOAD CSV LIST FROM docs/data/index.json
 --------------------------*/
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(res => res.json())
@@ -32,12 +32,15 @@ fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/da
         });
     });
 
+/* -------------------------
+   WHEN SELECT CHANGES → LOAD CSV
+--------------------------*/
 document.getElementById("landSelect").addEventListener("change", function () {
     loadCSV(this.value);
 });
 
 /* -------------------------
-   LOAD INDIVIDUAL CSV
+   LOAD INDIVIDUAL CSV FILE
 --------------------------*/
 function loadCSV(land) {
     const url = `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
@@ -51,18 +54,30 @@ function loadCSV(land) {
 }
 
 /* -------------------------
-   CLEAN + PARSE NUMERIC VALUES
+   CONVERT ANY PRICE STRING TO FLOAT
 --------------------------*/
 function toNumber(v) {
     if (!v) return null;
+
     v = v.replace(/"/g, "").trim();
     v = v.replace(/[^0-9.,-]/g, "");
-    if (v.includes(",")) v = v.replace(/,/g, ".");
+
+    // comma → dot
+    if (v.includes(",")) {
+        v = v.replace(/,/g, ".");
+    }
+
+    // safety: reduce multiple dots
+    const parts = v.split(".");
+    if (parts.length > 2) {
+        v = parts[0] + "." + parts.slice(1).join("");
+    }
+
     return parseFloat(v);
 }
 
 /* -------------------------
-   PARSE CSV FILE
+   PARSE CSV → ARRAY
 --------------------------*/
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
@@ -78,31 +93,8 @@ function parseCSV(csv) {
 }
 
 /* -------------------------
-   DRAW TREND CHART
+   CREATE A DATASET
 --------------------------*/
-function updateChart(data) {
-    const ctx = document.getElementById("trendChart").getContext("2d");
-    if (chart) chart.destroy();
-    const multiple = data.length > 1;
-
-    chart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: data.map(d => d.date),
-            datasets: [
-                dataset("E5", "#0078FF", data.map(d => d.E5), multiple),
-                dataset("E10", "#FF8800", data.map(d => d.E10), multiple),
-                dataset("Diesel", "#00AA00", data.map(d => d.Diesel), multiple),
-                dataset("LPG", "#AA00AA", data.map(d => d.LPG), multiple),
-            ]
-        },
-        options: {
-            responsive: false,
-            maintainAspectRatio: false
-        }
-    });
-}
-
 function dataset(label, color, values, showLine) {
     return {
         label,
@@ -118,12 +110,58 @@ function dataset(label, color, values, showLine) {
 }
 
 /* -------------------------
-   RANGE FILTER
+   DRAW TREND CHART
+--------------------------*/
+function updateChart(data) {
+    const ctx = document.getElementById("trendChart").getContext("2d");
+
+    if (chart) chart.destroy();
+
+    // ❗ FIX ZOOM PROBLEM:
+    // Bepaal de grootste waarde van dit land en bouw de y-as daaromheen
+    const maxValue = Math.max(
+        ...data.map(d => d.E5 || 0),
+        ...data.map(d => d.E10 || 0),
+        ...data.map(d => d.Diesel || 0),
+        ...data.map(d => d.LPG || 0)
+    );
+
+    const yMax = maxValue + 0.20; // beetje marge
+    const multiple = data.length > 1;
+
+    chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: data.map(d => d.date),
+            datasets: [
+                dataset("E5", "#0078FF", data.map(d => d.E5), multiple),
+                dataset("E10", "#FF8800", data.map(d => d.E10), multiple),
+                dataset("Diesel", "#00AA00", data.map(d => d.Diesel), multiple),
+                dataset("LPG", "#AA00AA", data.map(d => d.LPG), multiple)
+            ]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: yMax,
+                    ticks: {
+                        stepSize: 0.1
+                    }
+                }
+            }
+        }
+    });
+}
+
+/* -------------------------
+   DATE RANGE BUTTONS
 --------------------------*/
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
-        document.querySelectorAll("button[data-range]")
-            .forEach(b => b.classList.remove("active"));
+        document.querySelectorAll("button[data-range]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
 
         let range = btn.getAttribute("data-range");
