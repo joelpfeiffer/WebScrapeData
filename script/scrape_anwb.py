@@ -6,109 +6,130 @@ from playwright.sync_api import sync_playwright
 
 URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
 
-def normalize_price(value: str) -> str:
-    """Zet een decimale punt naar een komma voor Europese notatie."""
-    stripped = value.replace(".", "").replace(",", "")
-    if stripped.isdigit():
-        return value.replace(".", ",")
-    return value
+def clean_price(value: str) -> str:
+    """
+    Maakt ANWB-prijzen schoon.
+    - Verwijdert quotes
+    - Verwijdert spaties
+    - Houdt alleen cijfers, komma's en punten
+    - Zet punt-decimaal naar komma
+    Resultaat is Excel-vriendelijk.
+    """
+    if not value:
+        return ""
 
-def normalize_land(s: str) -> str:
-    """Normaliseer landnaam voor matching."""
-    s = unicodedata.normalize("NFKD", s)
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    return s.lower().strip()
+    v = value.replace('"', '').strip()
+    v = ''.join(ch for ch in v if ch.isdigit() or ch in ",.")
+    
+    # ANWB gebruikt komma als decimaal
+    if "," in v and "." in v:
+        # verwijder duizendtallen
+        v = v.replace(".", "")
+    if "." in v and "," not in v:
+        # maak Europese notatie
+        v = v.replace(".", ",")
 
-def get_csv_path(land):
-    """Opslaan in docs/data/<land>.csv"""
+    return v
+
+
+def normalize_land(land: str) -> str:
+    """Normaliseer landnaam: lowercase + verwijder accenten."""
+    land = unicodedata.normalize("NFKD", land)
+    land = "".join(c for c in land if not unicodedata.combining(c))
+    return land.strip().lower()
+
+
+def get_csv_path(land: str) -> str:
     safe = land.replace(" ", "_")
     base = os.path.dirname(__file__)
     return os.path.join(base, "..", "docs", "data", f"{safe}.csv")
 
+
 def scrape_anwb():
+
     with sync_playwright() as p:
+
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        print("Pagina laden…")
+        print("▶ Pagina laden…")
         page.goto(URL, timeout=60000)
-        page.wait_for_selector("table", timeout=20000)
 
-        # ---- DATUM SCRAPEN ----
+        page.wait_for_selector("table", timeout=30000)
+
+        # ---- Laatst bijgewerkt ----
         try:
-            updated = page.get_by_text("Laatst bijgewerkt")
-            updated_text = updated.inner_text().strip()
+            updated_el = page.get_by_text("Laatst bijgewerkt")
+            updated_text = updated_el.inner_text().strip()
             updated_date = updated_text.split(":")[1].strip()
         except:
             updated_date = datetime.now().strftime("%Y-%m-%d")
 
-        print(f"ANWB-datum: {updated_date}")
+        print(f"▶ ANWB-datum: {updated_date}")
 
-        # ---- TABEL SCRAPEN ----
+        # ---- Tabel uitlezen ----
         rows = page.query_selector_all("table tr")
 
         header = None
-        all_countries = {}  # land → data
+        all_countries = {}
 
         for row in rows:
             cols = [c.inner_text().strip() for c in row.query_selector_all("th, td")]
             if not cols:
                 continue
 
-            # Header = eerste rij → verwijder landkolom
+            # Header detecteren
             if header is None:
-                header = cols[1:]
+                header = cols[1:]     # verwijder 'Land'
                 continue
 
             land_raw = cols[0]
             land_norm = normalize_land(land_raw)
 
-            cleaned = [normalize_price(v) for v in cols[1:]]
+            cleaned_prices = [clean_price(v) for v in cols[1:]]
 
             all_countries[land_norm] = {
                 "display": land_raw,
-                "values": cleaned
+                "values": cleaned_prices
             }
-
-            print(f"Gevonden land: {land_raw}")
 
         browser.close()
 
-    # ---- OPSLAG PER LAND ----
+    # ---- Wegschrijven per land ----
     for land_norm, info in all_countries.items():
 
         csv_path = get_csv_path(land_norm)
         file_exists = os.path.isfile(csv_path)
         last_date = None
 
-        # Lees laatste datum
         if file_exists:
             with open(csv_path, "r", encoding="utf-8") as f:
                 lines = list(csv.reader(f))
                 if len(lines) > 1:
                     last_date = lines[-1][0]
 
-        # Skip als datum al bestaat
         if last_date == updated_date:
-            print(f"{info['display']}: datum {updated_date} bestaat al → skip")
+            print(f"⏭ {info['display']}: datum {updated_date} bestaat al.")
             continue
 
-        rows_to_write = []
+        output_rows = []
 
-        # Eerste keer header schrijven
+        # Header bij eerste keer
         if not file_exists:
-            rows_to_write.append(["Datum (ANWB)"] + header)
+            output_rows.append(["Datum (ANWB)"] + header)
 
-        # Nieuwe rij
-        rows_to_write.append([updated_date] + info["values"])
+        # Nieuwe rij toevoegen
+        output_rows.append([updated_date] + info["values"])
 
-        # Opslaan
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+
         with open(csv_path, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerows(rows_to_write)
+            writer.writerows(output_rows)
 
-        print(f"✔ Nieuwe rij toegevoegd voor {info['display']} ({updated_date})")
+        print(f"✔ Toegevoegd: {info['display']} ({updated_date})")
+
 
 if __name__ == "__main__":
     scrape_anwb()
+``
