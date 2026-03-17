@@ -1,8 +1,5 @@
-// Pad naar de CSV in de repo
-const csvPath = "../data/nederland.csv";
-
-console.log("script.js is geladen!");
-
+// Correct pad naar de CSV (GitHub Pages serveert /docs als root)
+const csvPath = "data/nederland.csv";
 
 // Grafiekkleuren
 const colors = {
@@ -12,31 +9,30 @@ const colors = {
     "Lpg": "rgba(153, 102, 255, 1)"
 };
 
-// CSV inladen en parsen
+console.log("script.js geladen, CSV pad =", csvPath);
+
+// CSV inladen en grafiek bouwen
 Papa.parse(csvPath, {
     download: true,
     header: true,
     delimiter: ",",
     complete: function(result) {
-        const rows = result.data;
+        console.log("CSV geladen:", result);
 
-        // Datum + datasets opbouwen
+        const rows = result.data.filter(r => r["Datum (ANWB)"]); // lege regels eruit
         const labels = rows.map(r => r["Datum (ANWB)"]);
 
-        const datasets = [
-            "Diesel (B7)",
-            "E10",
-            "E5",
-            "Lpg"
-        ].map(fuel => ({
+        const fuels = ["Diesel (B7)", "E10", "E5", "Lpg"];
+
+        const datasets = fuels.map(fuel => ({
             label: fuel,
-            data: rows.map(r => parseFloat(r[fuel].replace(",", "."))),
+            data: rows.map(r => parseFloat((r[fuel] || "0").replace(",", "."))),
             borderColor: colors[fuel],
+            borderWidth: 2,
             fill: false,
             tension: 0.2
         }));
 
-        // Grafiek tekenen
         const ctx = document.getElementById("fuelChart").getContext("2d");
 
         new Chart(ctx, {
@@ -63,5 +59,8 @@ Papa.parse(csvPath, {
                 }
             }
         });
+    },
+    error: function(err) {
+        console.error("PapaParse fout:", err);
     }
 });
