@@ -1,11 +1,8 @@
 <!DOCTYPE html>
 <html lang="nl" data-theme="light">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Brandstofprijzen Trend</title>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
     body {
@@ -18,53 +15,50 @@
     :root {
         --bg: #ffffff;
         --text: #000000;
-        --button-bg: #ffffff;
-        --button-border: #444;
-        --button-active-bg: #0078ff;
-        --button-active-text: #ffffff;
-        --canvas-bg: #ffffff;
-        --canvas-border: #ccc;
+        --border: #cccccc;
+        --table-bg: #ffffff;
     }
 
-    /* DARK MODE */
     [data-theme="dark"] {
         --bg: #121212;
-        --text: #e5e5e5;
-        --button-bg: #1e1e1e;
-        --button-border: #888;
-        --button-active-bg: #005bd1;
-        --button-active-text: #ffffff;
-        --canvas-bg: #1e1e1e;
-        --canvas-border: #555;
+        --text: #f0f0f0;
+        --border: #444444;
+        --table-bg: #1d1d1d;
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        background: var(--table-bg);
+    }
+
+    th, td {
+        border: 1px solid var(--border);
+        padding: 8px;
+        text-align: left;
+    }
+
+    th {
+        background: var(--border);
+        color: var(--text);
     }
 
     select {
-        padding: 8px;
-        font-size: 16px;
-        margin-left: 10px;
+        padding: 6px;
+        font-size: 14px;
     }
 
     button {
         padding: 6px 12px;
         margin: 3px;
-        border: 1px solid var(--button-border);
-        background: var(--button-bg);
-        color: var(--text);
+        border: 1px solid var(--border);
+        background: var(--table-bg);
         cursor: pointer;
-        border-radius: 4px;
     }
 
     button.active {
-        background: var(--button-active-bg);
-        color: var(--button-active-text);
-    }
-
-    #trendChart {
-        width: 700px !important;
-        height: 350px !important;
-        background: var(--canvas-bg);
-        border: 1px solid var(--canvas-border);
-        margin-top: 20px;
+        background: #0078ff;
+        color: white;
     }
 </style>
 </head>
@@ -75,10 +69,12 @@
 
 <button id="themeToggle">🌙 Dark Mode</button>
 
-<label for="landSelect">Selecteer land:</label>
-<select id="landSelect">
-    <option>Data laden…</option>
-</select>
+<br /><br />
+
+<label for="landSelect">Selecteer landen (max 4):</label><br />
+<select id="landSelect" multiple size="6" style="min-width: 250px; margin-top:10px;"></select>
+
+<br /><br />
 
 <div>
     <button data-range="7">1 week</button>
@@ -92,10 +88,10 @@
     <button data-range="all" class="active">Alles</button>
 </div>
 
-<canvas id="trendChart"></canvas>
+<br />
 
-<!-- 🟢 DIT WAS FOUT — DIT IS NU GOED -->
+<div id="comparisonTable"></div>
+
 <script src="script.js"></script>
-
 </body>
 </html>
