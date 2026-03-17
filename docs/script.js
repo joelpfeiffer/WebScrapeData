@@ -15,7 +15,7 @@ toggle.addEventListener("click", () => {
 });
 
 /* -------------------------
-   LOAD COUNTRIES (index.json)
+   LOAD COUNTRIES LIST
 --------------------------*/
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(res => res.json())
@@ -37,7 +37,7 @@ document.getElementById("landSelect").addEventListener("change", function () {
 });
 
 /* -------------------------
-   CSV LOADER
+   LOAD CSV
 --------------------------*/
 function loadCSV(land) {
     const url =
@@ -52,7 +52,7 @@ function loadCSV(land) {
 }
 
 /* -------------------------
-   PRICE → FLOAT
+   PARSE PRICE STRING
 --------------------------*/
 function toNumber(v) {
     if (!v) return null;
@@ -60,31 +60,43 @@ function toNumber(v) {
     v = v.replace(/[^0-9.,-]/g, "");
     if (v.includes(",")) v = v.replace(/,/g, ".");
     const parts = v.split(".");
-    if (parts.length > 2)
-        v = parts[0] + "." + parts.slice(1).join("");
+    if (parts.length > 2) v = parts[0] + "." + parts.slice(1).join("");
     return parseFloat(v);
 }
 
 /* -------------------------
-   CSV PARSER
+   PARSE CSV
 --------------------------*/
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
     const body = rows.slice(1);
 
-    return body.map(r => ({
+    const data = body.map(r => ({
         date: r[0],
         E5: toNumber(r[1]),
         E10: toNumber(r[2]),
         Diesel: toNumber(r[3]),
         LPG: toNumber(r[4])
     }));
+
+    return data;
+}
+
+/* -------------------------
+   FIX: Duplicate datapoint if only 1 exists
+--------------------------*/
+function fixOnePointData(data) {
+    if (data.length === 1) {
+        const d = data[0];
+        return [d, { ...d }];
+    }
+    return data;
 }
 
 /* -------------------------
    DATASET BUILDER
 --------------------------*/
-function dataset(label, color, values, hasMultiple) {
+function dataset(label, color, values) {
     return {
         label,
         data: values,
@@ -92,17 +104,21 @@ function dataset(label, color, values, hasMultiple) {
         backgroundColor: color,
         fill: false,
         tension: 0.3,
-        showLine: hasMultiple,
-        pointRadius: hasMultiple ? 5 : 8,
-        pointHoverRadius: hasMultiple ? 7 : 10,
-        borderWidth: hasMultiple ? 2 : 0
+        showLine: true,      // ALWAYS draw a line
+        pointRadius: 5,
+        pointHoverRadius: 8,
+        borderWidth: 2
     };
 }
 
 /* -------------------------
-   TREND CHART  (LEGEND ONDER!)
+   UPDATE CHART
 --------------------------*/
-function updateChart(data) {
+function updateChart(dataRaw) {
+
+    // FIX: ALWAYS ensure 2 points
+    const data = fixOnePointData(dataRaw);
+
     const ctx = document.getElementById("trendChart").getContext("2d");
     if (chart) chart.destroy();
 
@@ -114,17 +130,16 @@ function updateChart(data) {
     );
 
     const yMax = maxValue + 0.2;
-    const multi = data.length > 1;
 
     chart = new Chart(ctx, {
         type: "line",
         data: {
             labels: data.map(d => d.date),
             datasets: [
-                dataset("E5", "#0078FF", data.map(d => d.E5), multi),
-                dataset("E10", "#FF8800", data.map(d => d.E10), multi),
-                dataset("Diesel", "#00AA00", data.map(d => d.Diesel), multi),
-                dataset("LPG", "#AA00AA", data.map(d => d.LPG), multi)
+                dataset("E5", "#0078FF", data.map(d => d.E5)),
+                dataset("E10", "#FF8800", data.map(d => d.E10)),
+                dataset("Diesel", "#00AA00", data.map(d => d.Diesel)),
+                dataset("LPG", "#AA00AA", data.map(d => d.LPG))
             ]
         },
         options: {
@@ -141,7 +156,7 @@ function updateChart(data) {
 
             plugins: {
                 legend: {
-                    position: "bottom",    // <-- DE FIX VAN ALLES
+                    position: "bottom",
                     labels: {
                         boxWidth: 12,
                         boxHeight: 12,
