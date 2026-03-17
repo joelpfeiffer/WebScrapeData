@@ -15,7 +15,6 @@
         color: var(--text);
     }
 
-    /* Thema variabelen */
     :root {
         --bg: #ffffff;
         --text: #000000;
@@ -27,6 +26,7 @@
         --canvas-border: #ccc;
     }
 
+    /* DARK MODE */
     [data-theme="dark"] {
         --bg: #121212;
         --text: #e5e5e5;
@@ -41,16 +41,17 @@
     select {
         padding: 8px;
         font-size: 16px;
+        margin-left: 10px;
     }
 
     button {
         padding: 6px 12px;
         margin: 3px;
+        border: 1px solid var(--button-border);
         background: var(--button-bg);
         color: var(--text);
-        border: 1px solid var(--button-border);
-        border-radius: 4px;
         cursor: pointer;
+        border-radius: 4px;
     }
 
     button.active {
@@ -75,9 +76,11 @@
 <button id="themeToggle">🌙 Dark Mode</button>
 
 <label for="landSelect">Selecteer land:</label>
-<select id="landSelect"><option>Data laden…</option></select>
+<select id="landSelect">
+    <option>Data laden…</option>
+</select>
 
-<div class="controls">
+<div>
     <button data-range="7">1 week</button>
     <button data-range="14">2 weken</button>
     <button data-range="30">1 maand</button>
@@ -91,7 +94,7 @@
 
 <canvas id="trendChart"></canvas>
 
-<!-- 🟢 DIT IS DE JUISTE MANIER -->
+<!-- 🟢 DIT WAS FOUT — DIT IS NU GOED -->
 <script src="script.js"></script>
 
 </body>
