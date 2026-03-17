@@ -1,9 +1,17 @@
 let chart = null;
-let fullRows = [];    // alle rijen met data + datum als object
-let currentLand = "nederland";
+let fullRows = [];
 let currentRange = "all";
+let currentLand = "nederland";
 
-// Brandstofkleuren
+const alleLanden = [
+    "nederland",
+    "belgie",
+    "duitsland",
+    "frankrijk",
+    "luxemburg",
+    "zwitserland"
+];
+
 const colors = {
     "Diesel (B7)": "rgba(255, 159, 64, 1)",
     "E10": "rgba(54, 162, 235, 1)",
@@ -11,7 +19,7 @@ const colors = {
     "Lpg": "rgba(153, 102, 255, 1)"
 };
 
-// --- CSV INLADEN ---
+// CSV inladen voor gekozen land
 function loadCSV(land) {
     currentLand = land;
     const csvPath = `data/${land}.csv`;
@@ -23,7 +31,6 @@ function loadCSV(land) {
         complete: (result) => {
             const rows = result.data.filter(r => r["Datum (ANWB)"]);
 
-            // Zet CSV datum om naar JS datumobject
             fullRows = rows.map(r => {
                 const [day, month, year] = r["Datum (ANWB)"].split("-").map(Number);
                 return {
@@ -39,27 +46,27 @@ function loadCSV(land) {
             applyFilter();
         }
     });
+
+    laadLaatsteWaarden();
 }
 
-// --- FILTER OP TIJD ---
+// Filtering
 function applyFilter() {
     let filtered = fullRows;
 
     if (currentRange !== "all") {
-        const days = parseInt(currentRange);
-        const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-
+        const cutoff = new Date(Date.now() - parseInt(currentRange) * 86400000);
         filtered = fullRows.filter(r => r.date >= cutoff);
     }
 
     drawChart(filtered);
 }
 
-// --- GRAFIEK TEKENEN ---
+// Grafiek tekenen
 function drawChart(rows) {
     const labels = rows.map(r => r.label);
-
     const fuels = ["Diesel (B7)", "E10", "E5", "Lpg"];
+
     const datasets = fuels.map(fuel => ({
         label: fuel,
         data: rows.map(r => r[fuel]),
@@ -70,7 +77,6 @@ function drawChart(rows) {
     }));
 
     const ctx = document.getElementById("fuelChart").getContext("2d");
-
     if (chart) chart.destroy();
 
     chart = new Chart(ctx, {
@@ -86,16 +92,44 @@ function drawChart(rows) {
     });
 }
 
-// --- RANGE-KNOP handler ---
-function setRange(range) {
-    currentRange = range;
+function setRange(days) {
+    currentRange = days;
     applyFilter();
 }
 
-// --- LAND-WISSEL handler ---
-document.getElementById("landSelect").addEventListener("change", function () {
-    loadCSV(this.value);
-});
+// LAATSTE WAARDEN TABEL
+function laadLaatsteWaarden() {
+    const tbody = document.querySelector("#latestTable tbody");
+    tbody.innerHTML = "";
 
-// Start met Nederland
+    alleLanden.forEach(land => {
+        Papa.parse(`data/${land}.csv`, {
+            download: true,
+            header: true,
+            delimiter: ",",
+            complete: (result) => {
+                const rows = result.data.filter(r => r["Datum (ANWB)"]);
+                if (!rows.length) return;
+                const last = rows[rows.length - 1];
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${land}</td>
+                    <td>${last["Datum (ANWB)"]}</td>
+                    <td>${last["Diesel (B7)"]}</td>
+                    <td>${last["E10"]}</td>
+                    <td>${last["E5"]}</td>
+                    <td>${last["Lpg"]}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        });
+    });
+}
+
+// Event listener
+document.getElementById("landSelect").addEventListener("change", e => loadCSV(e.target.value));
+
+// Start
 loadCSV("nederland");
+``
