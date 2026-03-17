@@ -2,33 +2,55 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>Brandstofprijzen Nederland (ANWB)</title>
+    <title>Brandstofprijzen Europa (ANWB)</title>
 
-    <!-- CORRECTE SCRIPT TAGS -->
+    <!-- Chart.js + PapaParse -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 30px;
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        #chartContainer { width: 100%; max-width: 900px; }
+
+        select, button {
+            font-size: 16px;
+            padding: 6px 12px;
+            margin: 5px;
         }
-        #chartContainer {
-            width: 100%;
-            max-width: 900px;
+
+        .btn-group {
+            margin: 15px 0;
         }
     </style>
 </head>
 <body>
 
-    <h1>Brandstofprijzen Nederland (ANWB) v2</h1>
-    <p>Automatisch geladen uit <code>data/nederland.csv</code></p>
+    <h1>Brandstofprijzen Europa (ANWB)</h1>
+
+    <p>Kies een land:</p>
+    <select id="landSelect">
+        <option value="nederland">Nederland</option>
+        <option value="belgie">België</option>
+        <option value="duitsland">Duitsland</option>
+        <option value="frankrijk">Frankrijk</option>
+        <option value="luxemburg">Luxemburg</option>
+        <option value="zwitserland">Zwitserland</option>
+    </select>
+
+    <div class="btn-group">
+        <button onclick="setRange('7')">Afgelopen week</button>
+        <button onclick="setRange('30')">Afgelopen maand</button>
+        <button onclick="setRange('60')">2 maanden</button>
+        <button onclick="setRange('90')">3 maanden</button>
+        <button onclick="setRange('365')">1 jaar</button>
+        <button onclick="setRange('730')">2 jaar</button>
+        <button onclick="setRange('all')">Alles</button>
+    </div>
 
     <div id="chartContainer">
         <canvas id="fuelChart"></canvas>
     </div>
 
-    <!-- JOUW EIGEN SCRIPT -->
     <script src="script.js"></script>
 
 </body>
