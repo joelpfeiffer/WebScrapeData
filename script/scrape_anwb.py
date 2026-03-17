@@ -20,9 +20,12 @@ def normalize_price(value: str) -> str:
     return value
 
 def get_csv_path(land):
+    # BASE = map waarin dit script staat (script/)
     base = os.path.dirname(__file__)
     safe = land.replace(" ", "_")
-    return os.path.join(base, "..", "data", f"{safe}.csv")
+    
+    # SCHRIJVEN NAAR docs/data/<land>.csv
+    return os.path.join(base, "..", "docs", "data", f"{safe}.csv")
 
 def scrape_anwb():
 
@@ -55,16 +58,14 @@ def scrape_anwb():
             if not cols:
                 continue
 
-            # Eerste rij = originele header
             if header is None:
-                # verwijder Land kolom (eerste kolom)
-                header = cols[1:]
+                header = cols[1:]  # verwijder "Land"
                 continue
 
             landnaam_norm = normalize_text(cols[0])
 
             if landnaam_norm in land_data:
-                cleaned = [normalize_price(v) for v in cols[1:]]  # verwijder land
+                cleaned = [normalize_price(v) for v in cols[1:]]
                 land_data[landnaam_norm] = cleaned
                 print(f"Gevonden: {landnaam_norm}")
 
