@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>Brandstofprijzen Vergelijking</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: var(--bg);
+        color: var(--text);
+    }
+
+    :root {
+        --bg: #ffffff;
+        --text: #000000;
+        --border: #ccc;
+        --table-bg: #fff;
+    }
+
+    [data-theme="dark"] {
+        --bg: #121212;
+        --text: #e5e5e5;
+        --border: #555;
+        --table-bg: #1d1d1d;
+    }
+
+    .topbar {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 20px;
+    }
+
+    .switch-btn {
+        background: var(--table-bg);
+        border: 1px solid var(--border);
+        padding: 8px 14px;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 25px;
+        background: var(--table-bg);
+    }
+
+    th, td {
+        border: 1px solid var(--border);
+        padding: 6px 10px;
+    }
+
+    th {
+        background: var(--border);
+    }
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+    <button class="switch-btn" onclick="window.location.href='index.html'">Ga naar Trendpagina</button>
+</div>
+
+<h1>Brandstofprijzen Vergelijking</h1>
+
+<select id="multiCountry" multiple size="6" style="min-width:250px;"></select>
+
+<div id="comparisonTable"></div>
+
+<script src="compare.js"></script>
+
+</body>
+</html>
