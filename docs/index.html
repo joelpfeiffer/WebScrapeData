@@ -1,67 +1,73 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <title>Brandstofprijzen Europa</title>
-
-    <!-- JUISTE SCRIPT TAGS -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-    <style>
-        body { font-family: Arial, sans-serif; margin: 30px; }
-        #chartContainer { width: 100%; max-width: 900px; }
-        select, button { font-size: 16px; padding: 6px 12px; margin: 5px; }
-        .btn-group { margin: 15px 0; }
-        table { border-collapse: collapse; margin-top: 25px; }
-        th, td { border: 1px solid black; padding: 6px 10px; }
-    </style>
+<meta charset="UTF-8">
+<title>Brandstofprijzen Trends</title>
+<style>
+    body { font-family: Arial; padding: 20px; background: #fafafa; }
+    select { padding: 8px; font-size: 16px; }
+    table { margin-top: 20px; border-collapse: collapse; width: 500px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+</style>
 </head>
 <body>
 
-    <h1>Brandstofprijzen Europa</h1>
+<h1>Brandstofprijzen Trend</h1>
 
-    <p>Kies een land:</p>
-    <select id="landSelect">
-        <option value="nederland">Nederland</option>
-        <option value="belgie">België</option>
-        <option value="duitsland">Duitsland</option>
-        <option value="frankrijk">Frankrijk</option>
-        <option value="luxemburg">Luxemburg</option>
-        <option value="zwitserland">Zwitserland</option>
-    </select>
+<label for="landSelect">Selecteer land:</label>
+<select id="landSelect">
+    <option>Data laden...</option>
+</select>
 
-    <div class="btn-group">
-        <button onclick="setRange('7')">Afgelopen week</button>
-        <button onclick="setRange('30')">Afgelopen maand</button>
-        <button onclick="setRange('60')">2 maanden</button>
-        <button onclick="setRange('90')">3 maanden</button>
-        <button onclick="setRange('365')">1 jaar</button>
-        <button onclick="setRange('730')">2 jaar</button>
-        <button onclick="setRange('all')">Alles</button>
-    </div>
+<div id="output"></div>
 
-    <div id="chartContainer">
-        <canvas id="fuelChart"></canvas>
-    </div>
+<script>
+// 1. Haal alle CSV-bestanden op
+fetch("https://api.github.com/repos/joelpfeiffer/WebScrapeData/contents/data")
+    .then(res => res.json())
+    .then(files => {
+        const select = document.getElementById("landSelect");
+        select.innerHTML = ""; // leegmaken
 
-    <h2>Laatste bekende prijzen per land</h2>
-    <table id="latestTable">
-        <thead>
-            <tr>
-                <th>Land</th>
-                <th>Datum</th>
-                <th>Diesel (B7)</th>
-                <th>E10</th>
-                <th>E5</th>
-                <th>LPG</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+        files
+            .filter(f => f.name.endswith(".csv"))
+            .forEach(f => {
+                const land = f.name.replace(".csv", "");
+                const opt = document.createElement("option");
+                opt.value = land;
+                opt.textContent = land.charAt(0).toUpperCase() + land.slice(1);
+                select.appendChild(opt);
+            });
+    });
 
-    <!-- DIT MOET HIERONDER -->
-    <script src="script.js"></script>
+// 2. Laad CSV bij selectie
+document.getElementById("landSelect").addEventListener("change", function(){
+    const land = this.value;
+
+    const url = `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/data/${land}.csv`;
+
+    fetch(url)
+        .then(res => res.text())
+        .then(csv => {
+            const rows = csv.trim().split("\n").map(r => r.split(","));
+            renderTable(rows);
+        });
+});
+
+// 3. Toon CSV als HTML tabel
+function renderTable(rows) {
+    let html = "<table>";
+    rows.forEach((row, i) => {
+        html += "<tr>";
+        row.forEach(col => {
+            html += i === 0 ? `<th>${col}</th>` : `<td>${col}</td>`;
+        });
+        html += "</tr>";
+    });
+    html += "</table>";
+    document.getElementById("output").innerHTML = html;
+}
+</script>
 
 </body>
 </html>
