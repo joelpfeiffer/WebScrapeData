@@ -43,7 +43,7 @@ function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
     const body = rows.slice(1);
 
-    return body.map(r => ({
+    return body.reverse().map(r => ({
         date: r[0],
         E5: parseFloat(r[1].replace(",", ".")),
         E10: parseFloat(r[2].replace(",", ".")),
@@ -58,15 +58,17 @@ function updateChart(data) {
 
     if (chart) chart.destroy();
 
+    const hasMultiple = data.length > 1;
+
     chart = new Chart(ctx, {
         type: "line",
         data: {
             labels: data.map(d => d.date),
             datasets: [
-                { label: "E5", borderColor: "#0078FF", data: data.map(d => d.E5), fill: false },
-                { label: "E10", borderColor: "#FF8800", data: data.map(d => d.E10), fill: false },
-                { label: "Diesel", borderColor: "#00AA00", data: data.map(d => d.Diesel), fill: false },
-                { label: "LPG", borderColor: "#AA00AA", data: data.map(d => d.LPG), fill: false }
+                makeDataset("E5", "#0078FF", data.map(d => d.E5), hasMultiple),
+                makeDataset("E10", "#FF8800", data.map(d => d.E10), hasMultiple),
+                makeDataset("Diesel", "#00AA00", data.map(d => d.Diesel), hasMultiple),
+                makeDataset("LPG", "#AA00AA", data.map(d => d.LPG), hasMultiple),
             ]
         },
         options: {
@@ -76,10 +78,24 @@ function updateChart(data) {
     });
 }
 
+function makeDataset(label, color, values, hasMultiple) {
+    return {
+        label: label,
+        data: values,
+        borderColor: color,
+        backgroundColor: color,
+        fill: false,
+        tension: 0.3,
+        showLine: hasMultiple,         // <— dit zorgt dat een lijn pas verschijnt als er 2+ punten zijn
+        pointRadius: 5,                // <— maakt de punten zichtbaar (ook bij maar 1 datapunt!)
+        pointHoverRadius: 7
+    };
+}
+
 // --- Range buttons ---
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
-        // Active styling
+
         document.querySelectorAll("button[data-range]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
 
