@@ -6,19 +6,24 @@ from playwright.sync_api import sync_playwright
 
 URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
 
-# Doellanden (genormaliseerd, zonder accenten)
-LANDEN = ["nederland", "duitsland", "belgie", "frankrijk", "zwitserland", "luxemburg"]
+LANDEN = ["nederland", "duitsland", "belgie", "frankrijk", "luxemburg"]
 
-def normalize(s: str) -> str:
-    """Verwijder accenten en zet lowercase."""
-    s = s.strip().lower()
+def normalize_text(s: str) -> str:
+    """Verwijder accenten + lowercase."""
     s = unicodedata.normalize("NFKD", s)
-    return "".join(c for c in s if not unicodedata.combining(c))
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return s.lower().strip()
+
+def normalize_price(value: str) -> str:
+    """Zet komma in prijzen om naar punt."""
+    if value.replace(",", "").replace(".", "").isdigit():  
+        return value.replace(",", ".")
+    return value
 
 def get_csv_path(land):
     base = os.path.dirname(__file__)
-    safe_name = land.replace(" ", "_")
-    return os.path.join(base, "..", "data", f"{safe_name}.csv")
+    safe = land.replace(" ", "_")
+    return os.path.join(base, "..", "data", f"{safe}.csv")
 
 def scrape_anwb():
 
@@ -28,13 +33,12 @@ def scrape_anwb():
 
         print("Pagina laden…")
         page.goto(URL, timeout=60000)
-
         page.wait_for_selector("table", timeout=20000)
 
-        # ---- DATUM (“Laatst bijgewerkt:”) ----
+        # ---- DATUM SCRAPEN ----
         try:
-            updated_element = page.get_by_text("Laatst bijgewerkt")
-            updated_text = updated_element.inner_text().strip()
+            updated = page.get_by_text("Laatst bijgewerkt")
+            updated_text = updated.inner_text().strip()
             updated_date = updated_text.split(":")[1].strip()
         except:
             updated_date = datetime.now().strftime("%Y-%m-%d")
@@ -49,59 +53,55 @@ def scrape_anwb():
 
         for row in rows:
             cols = [c.inner_text().strip() for c in row.query_selector_all("th, td")]
-
             if not cols:
                 continue
 
-            # Header
             if header is None:
                 header = cols
                 continue
 
-            # Normaliseer het land zoals het op ANWB staat
-            landnaam_norm = normalize(cols[0])
+            landnaam_norm = normalize_text(cols[0])
 
             if landnaam_norm in land_data:
+                # Prijzen transformeren: komma → punt
+                cleaned = [normalize_price(v) for v in cols]
+                land_data[landnaam_norm] = cleaned
                 print(f"Gevonden land: {landnaam_norm}")
-                land_data[landnaam_norm] = cols
 
         browser.close()
 
-    # ---- OPSLAG PER LAND ----
+    # ---- OPSLAG ----
     for land, row in land_data.items():
-
         if row is None:
-            print(f"⚠️  Geen data gevonden voor {land}")
+            print(f"⚠️ Geen data gevonden voor {land}")
             continue
 
         csv_path = get_csv_path(land)
-        file_exists = os.path.isfile(csv_path)
         last_date = None
+        file_exists = os.path.isfile(csv_path)
 
-        # Bestand bestaat → lees laatste datum
         if file_exists:
             with open(csv_path, "r", encoding="utf-8") as f:
-                reader = list(csv.reader(f))
-                if len(reader) > 1:
-                    last_date = reader[-1][0]
+                rows = list(csv.reader(f))
+                if len(rows) > 1:
+                    last_date = rows[-1][0]
 
-        # Als de datum al bestaat → skip
         if last_date == updated_date:
             print(f"{land}: datum {updated_date} bestaat al → skip")
             continue
 
-        rows_to_write = []
+        output_rows = []
 
         if not file_exists:
-            rows_to_write.append(["Datum (ANWB)"] + header)
+            output_rows.append(["Datum (ANWB)"] + header)
 
-        rows_to_write.append([updated_date] + row)
+        output_rows.append([updated_date] + row)
 
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
 
         with open(csv_path, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerows(rows_to_write)
+            writer.writerows(output_rows)
 
         print(f"✔️ Nieuwe rij toegevoegd voor {land} ({updated_date})")
 
