@@ -1,11 +1,14 @@
 import os
 import csv
 import unicodedata
-import re
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
+
+
+def get_today_date() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
 
 
 def clean_price(value: str) -> str:
@@ -46,49 +49,33 @@ def normalize_land(land: str) -> str:
     return land.strip().lower()
 
 
-def normalize_date(date_str: str) -> str:
-    for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(date_str.strip(), fmt).strftime("%Y-%m-%d")
-        except:
-            continue
-    return date_str.strip()
-
-
-def extract_date_from_page(page) -> str:
-    try:
-        body_text = page.inner_text("body")
-
-        import re
-        match = re.search(
-            r"Laatst\s+bijgewerkt.*?(\d{1,2}[-/]\d{1,2}[-/]\d{4})",
-            body_text,
-            re.IGNORECASE | re.DOTALL
-        )
-
-        if match:
-            raw_date = match.group(1)
-            print("FOUND (regex):", raw_date)
-            return normalize_date(raw_date)
-
-        raise ValueError("Datum niet gevonden")
-
-    except Exception as e:
-        print("FOUT bij datum ophalen:", e)
-
-        fallback = datetime.now().strftime("%Y-%m-%d")
-        print("Fallback datum:", fallback)
-
-        return fallback
-
-
 def get_csv_path(land: str) -> str:
     safe = land.replace(" ", "_")
     base = os.path.dirname(__file__)
     return os.path.join(base, "..", "docs", "data", f"{safe}.csv")
 
 
+def get_last_date_from_csv(path: str) -> str | None:
+    if not os.path.isfile(path):
+        return None
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            rows = [row for row in csv.reader(f) if row]
+
+        if len(rows) > 1:
+            return rows[-1][0].strip()
+
+    except Exception as e:
+        print("⚠ Fout bij lezen CSV:", path, e)
+
+    return None
+
+
 def scrape_anwb():
+    today = get_today_date()
+    print("▶ Datum (vandaag):", today)
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
@@ -96,9 +83,6 @@ def scrape_anwb():
         print("▶ Pagina laden…")
         page.goto(URL, timeout=60000)
         page.wait_for_selector("table", timeout=30000)
-
-        updated_date = extract_date_from_page(page)
-        print("▶ Datum gebruikt:", updated_date)
 
         rows = page.query_selector_all("table tr")
 
@@ -127,28 +111,20 @@ def scrape_anwb():
 
     for land_norm, info in all_countries.items():
         csv_path = get_csv_path(land_norm)
-        file_exists = os.path.isfile(csv_path)
-        last_date = None
+        last_date = get_last_date_from_csv(csv_path)
 
-        if file_exists:
-            with open(csv_path, "r", encoding="utf-8") as f:
-                lines = [row for row in csv.reader(f) if row]
+        print(f"DEBUG: {info['display']} | last: {last_date} | today: {today}")
 
-                if len(lines) > 1:
-                    last_date = normalize_date(lines[-1][0])
-
-        print("DEBUG:", info["display"], "| last:", last_date, "| new:", updated_date)
-
-        if last_date == updated_date:
-            print("⏭", info["display"], "heeft al", updated_date)
+        if last_date == today:
+            print("⏭", info["display"], "heeft al data voor vandaag")
             continue
 
         rows_out = []
 
-        if not file_exists:
-            rows_out.append(["Datum (ANWB)"] + header)
+        if not os.path.isfile(csv_path):
+            rows_out.append(["Datum"] + header)
 
-        rows_out.append([updated_date] + info["values"])
+        rows_out.append([today] + info["values"])
 
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
 
@@ -156,7 +132,7 @@ def scrape_anwb():
             writer = csv.writer(f)
             writer.writerows(rows_out)
 
-        print("✔ Toegevoegd:", info["display"], updated_date)
+        print("✔ Toegevoegd:", info["display"], today)
 
 
 if __name__ == "__main__":
