@@ -6,40 +6,37 @@ from playwright.sync_api import sync_playwright
 
 URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
 
+
 def clean_price(value: str) -> str:
-    """
-    Maakt ANWB-prijzen schoon.
-    - Verwijdert quotes
-    - Verwijdert spaties
-    - Houdt alleen cijfers, komma's en punten
-    - Zet punt-decimaal naar komma
-    Resultaat is Excel-vriendelijk.
-    """
+    """Maak ANWB-brandstofprijs schoon en Excel-vriendelijk."""
     if not value:
         return ""
 
+    # verwijder quotes + spaties
     v = value.replace('"', '').strip()
+
+    # verwijder alle vreemde tekens behalve cijfers, komma, punt
     v = ''.join(ch for ch in v if ch.isdigit() or ch in ",.")
-    
-    # ANWB gebruikt komma als decimaal
+
+    # Europese notatie normaliseren
     if "," in v and "." in v:
-        # verwijder duizendtallen
+        # verwijder dubbele punten
         v = v.replace(".", "")
     if "." in v and "," not in v:
-        # maak Europese notatie
         v = v.replace(".", ",")
 
     return v
 
 
 def normalize_land(land: str) -> str:
-    """Normaliseer landnaam: lowercase + verwijder accenten."""
+    """Landnaam normaliseren voor bestandsnamen."""
     land = unicodedata.normalize("NFKD", land)
     land = "".join(c for c in land if not unicodedata.combining(c))
     return land.strip().lower()
 
 
 def get_csv_path(land: str) -> str:
+    """CSV-bestand in docs/data/<land>.csv plaatsen."""
     safe = land.replace(" ", "_")
     base = os.path.dirname(__file__)
     return os.path.join(base, "..", "docs", "data", f"{safe}.csv")
@@ -48,7 +45,6 @@ def get_csv_path(land: str) -> str:
 def scrape_anwb():
 
     with sync_playwright() as p:
-
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
@@ -57,7 +53,7 @@ def scrape_anwb():
 
         page.wait_for_selector("table", timeout=30000)
 
-        # ---- Laatst bijgewerkt ----
+        # ---- Datum ('Laatst bijgewerkt:') ----
         try:
             updated_el = page.get_by_text("Laatst bijgewerkt")
             updated_text = updated_el.inner_text().strip()
@@ -78,9 +74,9 @@ def scrape_anwb():
             if not cols:
                 continue
 
-            # Header detecteren
+            # eerste rij = header (zonder 'Land')
             if header is None:
-                header = cols[1:]     # verwijder 'Land'
+                header = cols[1:]
                 continue
 
             land_raw = cols[0]
@@ -95,30 +91,32 @@ def scrape_anwb():
 
         browser.close()
 
-    # ---- Wegschrijven per land ----
+    # ---- Wegschrijven naar CSV ----
     for land_norm, info in all_countries.items():
 
         csv_path = get_csv_path(land_norm)
         file_exists = os.path.isfile(csv_path)
         last_date = None
 
+        # lees laatste datum indien bestand bestaat
         if file_exists:
             with open(csv_path, "r", encoding="utf-8") as f:
                 lines = list(csv.reader(f))
                 if len(lines) > 1:
                     last_date = lines[-1][0]
 
+        # skip dubbele datum
         if last_date == updated_date:
             print(f"⏭ {info['display']}: datum {updated_date} bestaat al.")
             continue
 
         output_rows = []
 
-        # Header bij eerste keer
+        # header slechts 1x
         if not file_exists:
             output_rows.append(["Datum (ANWB)"] + header)
 
-        # Nieuwe rij toevoegen
+        # nieuwe rij toevoegen
         output_rows.append([updated_date] + info["values"])
 
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
