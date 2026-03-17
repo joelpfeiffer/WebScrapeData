@@ -1,22 +1,17 @@
-let fullData = [];
-let chart = null;
+let allCountryData = {};
 
-/* ---------------------------------------
+/* -------------------------
    DARK MODE
---------------------------------------- */
-const root = document.documentElement;
-const toggle = document.getElementById("themeToggle");
-
-toggle.addEventListener("click", () => {
+--------------------------*/
+document.getElementById("themeToggle").addEventListener("click", () => {
+    const root = document.documentElement;
     const isDark = root.getAttribute("data-theme") === "dark";
     root.setAttribute("data-theme", isDark ? "light" : "dark");
-    toggle.textContent = isDark ? "🌙 Dark Mode" : "☀️ Light Mode";
-    if (chart) chart.update();
 });
 
-/* ---------------------------------------
+/* -------------------------
    LANDEN LADEN
---------------------------------------- */
+--------------------------*/
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(res => res.json())
     .then(list => {
@@ -32,162 +27,157 @@ fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/da
         });
     });
 
+/* -------------------------
+   MULTI-SELECT HANDLER
+--------------------------*/
 document.getElementById("landSelect").addEventListener("change", function () {
-    loadCSV(this.value);
+    const selected = [...this.selectedOptions].map(o => o.value);
+
+    if (selected.length > 4) {
+        alert("Je kunt maximaal 4 landen tegelijk kiezen.");
+        this.selectedOptions[4].selected = false;
+        return;
+    }
+
+    loadMultipleCountries(selected);
 });
 
-/* ---------------------------------------
-   CSV LADEN
---------------------------------------- */
-function loadCSV(land) {
-    const url = `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
+/* -------------------------
+   CSV MULTI LOAD
+--------------------------*/
+function loadMultipleCountries(landen) {
+    const promises = landen.map(land =>
+        fetch(`https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`)
+            .then(res => res.text())
+            .then(text => {
+                allCountryData[land] = parseCSV(text);
+            })
+    );
 
-    fetch(url)
-        .then(res => res.text())
-        .then(text => {
-            fullData = parseCSV(text);
-            updateChart(fullData);
-        });
+    Promise.all(promises).then(() => {
+        updateTable(landen);
+    });
 }
 
-/* ---------------------------------------
-   STRING NAAR NUMMER
---------------------------------------- */
+/* -------------------------
+   STRING → NUMMER
+--------------------------*/
 function toNumber(v) {
     if (!v) return null;
+
     v = v.replace(/"/g, "").trim();
     v = v.replace(/[^0-9.,-]/g, "");
-    if (v.includes(",")) v = v.replace(/,/g, ".");
-    let parts = v.split(".");
-    if (parts.length > 2) v = parts[0] + "." + parts.slice(1).join("");
+
+    if (v.includes(",")) {
+        v = v.replace(/,/g, ".");
+    }
+
+    const parts = v.split(".");
+    if (parts.length > 2) {
+        v = parts[0] + "." + parts.slice(1).join("");
+    }
+
     return parseFloat(v);
 }
 
-/* ---------------------------------------
-   CSV PARSER
---------------------------------------- */
-
-
+/* -------------------------
+   PARSE CSV (juiste kolomvolgorde)
+--------------------------*/
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
     const body = rows.slice(1);
 
     return body.map(r => ({
         date: r[0],
-
-        // ✔ correcte koppeling volgens CSV screenshot:
-        Diesel: toNumber(r[1]), // kolom 1
-        E10: toNumber(r[2]),    // kolom 2
-        E5: toNumber(r[3]),     // kolom 3
-        LPG: toNumber(r[4])     // kolom 4
+        Diesel: toNumber(r[1]), // ← kolom 1
+        E10: toNumber(r[2]),    // ← kolom 2
+        E5: toNumber(r[3]),     // ← kolom 3
+        LPG: toNumber(r[4])     // ← kolom 4
     }));
 }
 
+/* -------------------------
+   TABEL MAKEN
+--------------------------*/
+function updateTable(landen) {
+    const tableDiv = document.getElementById("comparisonTable");
+    tableDiv.innerHTML = "";
 
-/* ---------------------------------------
-   CANVAS HARDE RESET
---------------------------------------- */
-function resetCanvas() {
-    const old = document.getElementById("trendChart");
-    const parent = old.parentNode;
-    old.remove();
+    if (landen.length === 0) {
+        tableDiv.innerHTML = "<p>Geen landen geselecteerd.</p>";
+        return;
+    }
 
-    const canvas = document.createElement("canvas");
-    canvas.id = "trendChart";
-    canvas.width = 700;
-    canvas.height = 350;
-    parent.appendChild(canvas);
-}
+    let html = `
+    <table>
+        <thead>
+            <tr>
+                <th>Land</th>
+                <th>Datum</th>
+                <th>E5</th>
+                <th>E10</th>
+                <th>Diesel</th>
+                <th>LPG</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
 
-/* ---------------------------------------
-   DATASET MAKER
---------------------------------------- */
-function dataset(label, color, data) {
-    return {
-        label,
-        data,
-        borderColor: color,
-        backgroundColor: color,
-        tension: 0.3,
-        fill: false,
-        spanGaps: true,                      // ★★★ FIX: geen gaten, geen rare render
-        cubicInterpolationMode: 'monotone',  // ★★★ FIX: smooth & stabiel bij 1 punt
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        borderWidth: 2
-    };
-}
+    landen.forEach(land => {
+        const data = allCountryData[land];
+        const last = data[data.length - 1];
 
-/* ---------------------------------------
-   UPDATE CHART
---------------------------------------- */
-function updateChart(data) {
-    resetCanvas();
-
-    const ctx = document.getElementById("trendChart").getContext("2d");
-
-    // schaal bepalen
-    const maxValue = Math.max(
-        ...data.map(d => d.E5),
-        ...data.map(d => d.E10),
-        ...data.map(d => d.Diesel),
-        ...data.map(d => d.LPG)
-    );
-
-    const yMax = maxValue + 0.2;
-
-    chart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: data.map(d => d.date),
-            datasets: [
-                dataset("E5", "#0078FF", data.map(d => d.E5)),
-                dataset("E10", "#FF8800", data.map(d => d.E10)),
-                dataset("Diesel", "#00AA00", data.map(d => d.Diesel)),
-                dataset("LPG", "#AA00AA", data.map(d => d.LPG))
-            ]
-        },
-        options: {
-            responsive: false,
-            maintainAspectRatio: false,
-
-            scales: {
-                y: {
-                    min: 0,
-                    max: yMax,
-                    ticks: { stepSize: 0.1, precision: 2 }
-                }
-            },
-
-            plugins: {
-                legend: {
-                    position: "bottom",
-                    labels: {
-                        boxWidth: 12,
-                        boxHeight: 12,
-                        font: { size: 12 }
-                    }
-                }
-            }
-        }
+        html += `
+            <tr>
+                <td>${land.charAt(0).toUpperCase() + land.slice(1)}</td>
+                <td>${last.date}</td>
+                <td>${last.E5?.toFixed(3)}</td>
+                <td>${last.E10?.toFixed(3)}</td>
+                <td>${last.Diesel?.toFixed(3)}</td>
+                <td>${last.LPG?.toFixed(3)}</td>
+            </tr>
+        `;
     });
+
+    html += `</tbody></table>`;
+
+    tableDiv.innerHTML = html;
 }
 
-/* ---------------------------------------
+/* -------------------------
    RANGE FILTERS
---------------------------------------- */
+--------------------------*/
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
-        document.querySelectorAll("button[data-range]").forEach(b => b.classList.remove("active"));
+
+        document.querySelectorAll("button[data-range]")
+            .forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
 
         const range = btn.dataset.range;
 
+        const selected = [...document.getElementById("landSelect").selectedOptions]
+            .map(o => o.value);
+
+        if (selected.length === 0) return;
+
         if (range === "all") {
-            updateChart(fullData);
+            updateTable(selected);
             return;
         }
 
-        updateChart(fullData.slice(-parseInt(range)));
+        const days = parseInt(range);
+
+        const newData = {};
+
+        selected.forEach(land => {
+            const all = allCountryData[land];
+            newData[land] = all.slice(-days);
+        });
+
+        // vervang globale data en update tabel
+        allCountryData = { ...allCountryData, ...newData };
+
+        updateTable(selected);
     });
 });
