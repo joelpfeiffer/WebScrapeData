@@ -1,5 +1,4 @@
-<script>
-// 1. Haal alle CSV-bestanden op vanuit docs/data
+// 1. Haal alle CSV-bestanden op uit docs/data
 fetch("https://api.github.com/repos/joelpfeiffer/WebScrapeData/contents/docs/data")
     .then(res => res.json())
     .then(files => {
@@ -12,16 +11,18 @@ fetch("https://api.github.com/repos/joelpfeiffer/WebScrapeData/contents/docs/dat
                 const land = f.name.replace(".csv", "");
                 const opt = document.createElement("option");
                 opt.value = land;
-                opt.textContent = land.charAt(0).toUpperCase() + land.slice(1);
+                opt.textContent =
+                    land.charAt(0).toUpperCase() + land.slice(1);
                 select.appendChild(opt);
             });
     });
 
-// 2. Laad CSV bij selectie
-document.getElementById("landSelect").addEventListener("change", function(){
+// 2. Bij land-selectie → CSV ophalen
+document.getElementById("landSelect").addEventListener("change", function () {
     const land = this.value;
 
-    const url = `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
+    const url =
+        `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
 
     fetch(url)
         .then(res => res.text())
@@ -31,17 +32,19 @@ document.getElementById("landSelect").addEventListener("change", function(){
         });
 });
 
-// 3. Toon CSV als HTML tabel
+// 3. CSV → HTML tabel
 function renderTable(rows) {
     let html = "<table>";
-    rows.forEach((row, i) => {
+    rows.forEach((row, index) => {
         html += "<tr>";
         row.forEach(col => {
-            html += i === 0 ? `<th>${col}</th>` : `<td>${col}</td>`;
+            html += index === 0
+                ? `<th>${col}</th>`
+                : `<td>${col}</td>`;
         });
         html += "</tr>";
     });
     html += "</table>";
+
     document.getElementById("output").innerHTML = html;
 }
-</script>
