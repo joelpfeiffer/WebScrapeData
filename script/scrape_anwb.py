@@ -8,36 +8,30 @@ URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
 
 
 def clean_price(value: str) -> str:
-    """Normaliseert ANWB prijzen naar decimaal PUNT voor CSV."""
     if not value:
         return ""
 
     v = value.replace('"', '').replace(" ", "").strip()
     v = ''.join(c for c in v if c.isdigit() or c in ",.")
 
-    # Case 1: puur cijfers (milliprijzen zoals 614 => 0.614)
     if v.isdigit():
         length = len(v)
-        if length == 3:      # 614 → 0.614
+        if length == 3:
             return f"0.{v}"
-        if length == 4:      # 1124 → 1.124
+        if length == 4:
             return f"{v[0]}.{v[1:]}"
-        if length == 5:      # 20479 → 20.479 (heel zeldzaam)
+        if length == 5:
             return f"{v[:2]}.{v[2:]}"
         return v
 
-    # Case 2: comma + dot mixed (2,047 or 2.047)
     if "," in v and "." in v:
-        # Als komma rechts staat -> comma = decimaal
         if v.rfind(",") > v.rfind("."):
-            v = v.replace(".", "")  # punt = duizendtal → weg
+            v = v.replace(".", "")
         else:
-            v = v.replace(",", "")  # komma = duizendtal → weg
+            v = v.replace(",", "")
 
-    # Converteer comma naar punt (CSV decimaal)
     v = v.replace(",", ".")
 
-    # Te veel punten verwijderen
     parts = v.split(".")
     if len(parts) > 2:
         v = parts[0] + "." + "".join(parts[1:])
@@ -51,6 +45,16 @@ def normalize_land(land: str) -> str:
     return land.strip().lower()
 
 
+def normalize_date(date_str: str) -> str:
+    """Zet datum om naar YYYY-MM-DD."""
+    for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(date_str.strip(), fmt).strftime("%Y-%m-%d")
+        except:
+            continue
+    return date_str.strip()
+
+
 def get_csv_path(land: str) -> str:
     safe = land.replace(" ", "_")
     base = os.path.dirname(__file__)
@@ -58,7 +62,6 @@ def get_csv_path(land: str) -> str:
 
 
 def scrape_anwb():
-
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
@@ -67,13 +70,14 @@ def scrape_anwb():
         page.goto(URL, timeout=60000)
         page.wait_for_selector("table", timeout=30000)
 
-        # Datum ANWB
+        # Datum ophalen
         try:
             updated = page.get_by_text("Laatst bijgewerkt").inner_text().strip()
             updated_date = updated.split(":")[1].strip()
         except:
             updated_date = datetime.now().strftime("%Y-%m-%d")
 
+        updated_date = normalize_date(updated_date)
         print("▶ Datum:", updated_date)
 
         rows = page.query_selector_all("table tr")
@@ -81,14 +85,13 @@ def scrape_anwb():
         header = None
         all_countries = {}
 
-        # Tabel lezen
         for row in rows:
             cols = [c.inner_text().strip() for c in row.query_selector_all("th, td")]
             if not cols:
                 continue
 
             if header is None:
-                header = cols[1:]  # verwijder Land kolom
+                header = cols[1:]
                 continue
 
             land_raw = cols[0]
@@ -102,32 +105,39 @@ def scrape_anwb():
 
         browser.close()
 
-    # CSV's opslaan
+    # CSV schrijven
     for land_norm, info in all_countries.items():
         csv_path = get_csv_path(land_norm)
         file_exists = os.path.isfile(csv_path)
         last_date = None
 
+        # Bestaande CSV lezen
         if file_exists:
             with open(csv_path, "r", encoding="utf-8") as f:
-                lines = list(csv.reader(f))
-                if len(lines) > 1:
-                    last_date = lines[-1][0]
+                lines = [row for row in csv.reader(f) if row]
 
+                if len(lines) > 1:
+                    last_date = normalize_date(lines[-1][0])
+
+        print("DEBUG:", info["display"], "| last:", last_date, "| new:", updated_date)
+
+        # Skip als datum al bestaat
         if last_date == updated_date:
             print("⏭", info["display"], "heeft al", updated_date)
             continue
 
         rows_out = []
 
+        # Header toevoegen als nieuw bestand
         if not file_exists:
             rows_out.append(["Datum (ANWB)"] + header)
 
+        # Nieuwe rij
         rows_out.append([updated_date] + info["values"])
 
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
 
-        with open(csv_path, "a", newline="", encoding="utf-8") as f:
+        with open(csv_path, "a", newline="\n", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerows(rows_out)
 
