@@ -1,7 +1,7 @@
 let fullData = [];
 let chart = null;
 
-// --- 1. CSV-bestanden ophalen uit docs/data ---
+// --- CSV's ophalen uit docs/data ---
 fetch("https://api.github.com/repos/joelpfeiffer/WebScrapeData/contents/docs/data")
     .then(res => res.json())
     .then(files => {
@@ -19,44 +19,40 @@ fetch("https://api.github.com/repos/joelpfeiffer/WebScrapeData/contents/docs/dat
             });
     });
 
-// --- 2. Land geselecteerd ---
+// --- Land selectie handler ---
 document.getElementById("landSelect").addEventListener("change", function () {
     loadCSV(this.value);
 });
 
-// --- 3. CSV inladen ---
+// --- CSV ophalen ---
 function loadCSV(land) {
-    const url = `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
+    const url =
+        `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
 
     fetch(url)
         .then(res => res.text())
         .then(text => {
             fullData = parseCSV(text);
 
-            renderTable(fullData);
             updateChart(fullData);
         });
 }
 
-// --- CSV → dataset ---
+// --- CSV parser ---
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
     const body = rows.slice(1);
 
     return body.map(r => ({
         date: r[0],
-        E5: parseComma(r[1]),
-        E10: parseComma(r[2]),
-        Diesel: parseComma(r[3]),
-        LPG: parseComma(r[4])
+        E5: parseFloat(r[1].replace(",", ".")),
+        E10: parseFloat(r[2].replace(",", ".")),
+        Diesel: parseFloat(r[3].replace(",", ".")),
+        LPG: parseFloat(r[4].replace(",", "."))
     }));
 }
 
-function parseComma(v) {
-    return parseFloat(v.replace(",", "."));
-}
-
-// --- 4. Trendgrafiek ---
+// --- Grafiek tekenen ---
 function updateChart(data) {
     const ctx = document.getElementById("trendChart").getContext("2d");
 
@@ -75,17 +71,15 @@ function updateChart(data) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { beginAtZero: false }
-            }
+            maintainAspectRatio: false
         }
     });
 }
 
-// --- 5. Buttons voor datum-range ---
+// --- Range buttons ---
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
+        // Active styling
         document.querySelectorAll("button[data-range]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
 
@@ -93,7 +87,6 @@ document.querySelectorAll("button[data-range]").forEach(btn => {
 
         if (range === "all") {
             updateChart(fullData);
-            renderTable(fullData);
             return;
         }
 
@@ -101,29 +94,6 @@ document.querySelectorAll("button[data-range]").forEach(btn => {
         const filtered = fullData.slice(-days);
 
         updateChart(filtered);
-        renderTable(filtered);
     });
 });
-
-// --- 6. Tabel ---
-function renderTable(data) {
-    const output = document.getElementById("output");
-
-    let html = "<table>";
-    html += "<tr><th>Datum</th><th>E5</th><th>E10</th><th>Diesel</th><th>LPG</th></tr>";
-
-    data.forEach(r => {
-        html += `
-        <tr>
-            <td>${r.date}</td>
-            <td>${r.E5}</td>
-            <td>${r.E10}</td>
-            <td>${r.Diesel}</td>
-            <td>${r.LPG}</td>
-        </tr>`;
-    });
-
-    html += "</table>";
-    output.innerHTML = html;
-}
 ``
