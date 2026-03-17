@@ -1,17 +1,40 @@
+/* ---------------------------------------
+   DARK MODE SYNC
+--------------------------------------- */
+const root = document.documentElement;
+const themeBtn = document.getElementById("themeToggle");
+
+const savedTheme = localStorage.getItem("theme");
+if (savedTheme) {
+    root.setAttribute("data-theme", savedTheme);
+    themeBtn.textContent = savedTheme === "dark" ? "☀️ Licht modus" : "🌙 Donkere modus";
+}
+
+themeBtn.addEventListener("click", () => {
+    const isDark = root.getAttribute("data-theme") === "dark";
+    const newTheme = isDark ? "light" : "dark";
+    root.setAttribute("data-theme", newTheme);
+    localStorage.setItem("theme", newTheme);
+    themeBtn.textContent = newTheme === "dark" ? "☀️ Licht modus" : "🌙 Donkere modus";
+});
+
+/* ---------------------------------------
+   MEERDERE LANDEN LADEN
+--------------------------------------- */
 let allCountryData = {};
 
 function toNumber(v) {
     if (!v) return null;
     v = v.replace(/"/g, "").trim();
-    v = v.replace(/[^0-9.,-]/g, "");
+    v = v.replace(/[^0-9.,]/g, "");
     if (v.includes(",")) v = v.replace(/,/g, ".");
     let p = v.split(".");
-    if (p.length > 2) v = p[0] + "." + p.slice(1).join("");
+    if (p.length > 2) v = p[0]+"."+p.slice(1).join("");
     return parseFloat(v);
 }
 
 function parseCSV(txt) {
-    const rows = txt.trim().split("\n").map(r => r.split(","));
+    const rows = txt.trim().split("\n").map(r=>r.split(","));
     const body = rows.slice(1);
 
     return body.map(r => ({
@@ -24,37 +47,41 @@ function parseCSV(txt) {
 }
 
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
-    .then(r => r.json())
-    .then(list => {
-        const select = document.getElementById("multiCountry");
-        list.forEach(file => {
-            const land = file.replace(".csv", "");
-            const o = document.createElement("option");
-            o.value = land;
-            o.textContent = land.charAt(0).toUpperCase() + land.slice(1);
-            select.appendChild(o);
+    .then(r=>r.json())
+    .then(list=>{
+        const s=document.getElementById("multiCountry");
+        list.forEach(file=>{
+            const land=file.replace(".csv","");
+            const o=document.createElement("option");
+            o.value=land;
+            o.textContent=land.charAt(0).toUpperCase()+land.slice(1);
+            s.appendChild(o);
         });
     });
 
-document.getElementById("multiCountry").addEventListener("change", async function () {
-    const selected = [...this.selectedOptions].map(o => o.value);
+document.getElementById("multiCountry").addEventListener("change", async function(){
+    const sel=[...this.selectedOptions].map(o=>o.value);
 
-    const fetches = selected.map(land =>
+    const fetches = sel.map(land =>
         fetch(`https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`)
-            .then(r => r.text())
+            .then(r=>r.text())
             .then(txt => allCountryData[land] = parseCSV(txt))
     );
 
     await Promise.all(fetches);
-    updateTable(selected);
+    updateTable(sel);
 });
 
-function updateTable(landen) {
-    const div = document.getElementById("comparisonTable");
-    div.innerHTML = "";
+/* ---------------------------------------
+   TABEL GENEREREN
+--------------------------------------- */
+function updateTable(landen){
 
-    if (landen.length === 0) {
-        div.innerHTML = "<p>Geen landen geselecteerd.</p>";
+    const div=document.getElementById("comparisonTable");
+    div.innerHTML="";
+
+    if(landen.length===0){
+        div.innerHTML="<p>Geen landen geselecteerd.</p>";
         return;
     }
 
@@ -73,21 +100,22 @@ function updateTable(landen) {
         <tbody>
     `;
 
-    landen.forEach(land => {
-        const data = allCountryData[land];
-        const last = data[data.length - 1];
+    landen.forEach(land=>{
+        const d=allCountryData[land];
+        const last=d[d.length-1];
 
         html += `
         <tr>
-            <td>${land.charAt(0).toUpperCase() + land.slice(1)}</td>
+            <td>${land.charAt(0).toUpperCase()+land.slice(1)}</td>
             <td>${last.date}</td>
-            <td>${last.E5?.toFixed(3)}</td>
-            <td>${last.E10?.toFixed(3)}</td>
-            <td>${last.Diesel?.toFixed(3)}</td>
-            <td>${last.LPG?.toFixed(3)}</td>
+            <td>${last.E5.toFixed(3)}</td>
+            <td>${last.E10.toFixed(3)}</td>
+            <td>${last.Diesel.toFixed(3)}</td>
+            <td>${last.LPG.toFixed(3)}</td>
         </tr>`;
     });
 
     html += "</tbody></table>";
+
     div.innerHTML = html;
 }
