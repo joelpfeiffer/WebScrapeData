@@ -4,7 +4,14 @@ from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 URL = "https://www.anwb.nl/vakantie/reisvoorbereiding/brandstofprijzen-europa"
-OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "brandstofprijzen.csv")
+
+# De landen die we willen scrapen (toegevoegd: luxemburg)
+LANDEN = ["nederland", "duitsland", "belgië", "frankrijk", "zwitserland", "luxemburg"]
+
+# Bestandsnamen voor elk land
+def get_csv_path(land):
+    base = os.path.dirname(__file__)
+    return os.path.join(base, "..", "data", f"{land}.csv")
 
 def scrape_anwb():
 
@@ -15,60 +22,81 @@ def scrape_anwb():
         print("Pagina laden...")
         page.goto(URL, timeout=60000)
 
-        # Wacht tot de tabel aanwezig is
+        # Wacht op de tabel
         page.wait_for_selector("table", timeout=20000)
 
-        # ---- DATUM SCRAPEN ----
+        # ---- DATUM SCRAPEN ("Laatst bijgewerkt:") ----
         try:
             updated_element = page.get_by_text("Laatst bijgewerkt")
             updated_text = updated_element.inner_text().strip()
-            # "Laatst bijgewerkt: 14 maart 2026"
             updated_date = updated_text.split(":")[1].strip()
         except:
             updated_date = datetime.now().strftime("%Y-%m-%d")
 
-        print(f"Scrape-datum gebruikt: {updated_date}")
+        print(f"ANWB-datum: {updated_date}")
 
         # ---- TABEL SCRAPEN ----
         rows = page.query_selector_all("table tr")
 
         header = None
-        nederland_row = None
+        land_data = {land: None for land in LANDEN}
 
         for row in rows:
             cols = [c.inner_text().strip() for c in row.query_selector_all("th, td")]
-
             if not cols:
                 continue
 
-            # Eerste rij = header
+            # Header
             if header is None:
                 header = cols
                 continue
 
-            # Zoek expliciet naar "Nederland"
-            if cols[0].lower() == "nederland":
-                nederland_row = cols
-                break
+            # Check landnaam in kolom 0
+            landnaam = cols[0].lower()
+
+            if landnaam in land_data:
+                land_data[landnaam] = cols
 
         browser.close()
 
-    # ---- CSV BOUWEN ----
-    if header is None or nederland_row is None:
-        raise ValueError("Kon Nederland of header niet vinden in ANWB-tabel!")
+    # ---- OPSLAG PER LAND ----
+    for land, row in land_data.items():
+        if row is None:
+            print(f"Waarschuwing: geen data gevonden voor {land}")
+            continue
 
-    output_data = []
-    output_data.append(["Datum (ANWB)"] + header)
-    output_data.append([updated_date] + nederland_row)
+        csv_path = get_csv_path(land)
+        file_exists = os.path.isfile(csv_path)
+        last_date = None
 
-    # ---- OPSLAAN ----
-    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+        # Als bestand bestaat → laatste datum lezen
+        if file_exists:
+            with open(csv_path, "r", encoding="utf-8") as f:
+                reader = list(csv.reader(f))
+                if len(reader) > 1:
+                    last_date = reader[-1][0]
 
-    with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerows(output_data)
+        # Als datum gelijk is → overslaan
+        if last_date == updated_date:
+            print(f"{land}: datum {updated_date} bestaat al → skip")
+            continue
 
-    print(f"✔️ Nederland succesvol opgeslagen in {OUTPUT_FILE}")
+        output_rows = []
+
+        # Eerste keer → header toevoegen
+        if not file_exists:
+            output_rows.append(["Datum (ANWB)"] + header)
+
+        # Nieuwe rij
+        output_rows.append([updated_date] + row)
+
+        # Wegschrijven
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        with open(csv_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerows(output_rows)
+
+        print(f"{land}: nieuwe rij toegevoegd ({updated_date})")
 
 if __name__ == "__main__":
     scrape_anwb()
