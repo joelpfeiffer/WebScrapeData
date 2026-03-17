@@ -15,17 +15,16 @@ def scrape_anwb():
         print("Pagina laden...")
         page.goto(URL, timeout=60000)
 
-        # Wacht tot de pagina geladen is
+        # Wacht tot de tabel aanwezig is
         page.wait_for_selector("table", timeout=20000)
 
-        # ---- LAATST BIJGEWERKT DATUM SCRAPEN ----
+        # ---- DATUM SCRAPEN ----
         try:
             updated_element = page.get_by_text("Laatst bijgewerkt")
             updated_text = updated_element.inner_text().strip()
-            # Tekst is bv: "Laatst bijgewerkt: 14 maart 2026"
+            # "Laatst bijgewerkt: 14 maart 2026"
             updated_date = updated_text.split(":")[1].strip()
         except:
-            print("Geen 'Laatst bijgewerkt' datum gevonden, gebruik systeemdatum")
             updated_date = datetime.now().strftime("%Y-%m-%d")
 
         print(f"Scrape-datum gebruikt: {updated_date}")
@@ -33,30 +32,43 @@ def scrape_anwb():
         # ---- TABEL SCRAPEN ----
         rows = page.query_selector_all("table tr")
 
-        data = []
-        is_header = True
+        header = None
+        nederland_row = None
 
         for row in rows:
             cols = [c.inner_text().strip() for c in row.query_selector_all("th, td")]
+
             if not cols:
                 continue
 
-            if is_header:
-                data.append(["Datum (ANWB)"] + cols)
-                is_header = False
-            else:
-                data.append([updated_date] + cols)
+            # Eerste rij = header
+            if header is None:
+                header = cols
+                continue
+
+            # Zoek expliciet naar "Nederland"
+            if cols[0].lower() == "nederland":
+                nederland_row = cols
+                break
 
         browser.close()
 
-    # ---- CSV OPSLAAN ----
+    # ---- CSV BOUWEN ----
+    if header is None or nederland_row is None:
+        raise ValueError("Kon Nederland of header niet vinden in ANWB-tabel!")
+
+    output_data = []
+    output_data.append(["Datum (ANWB)"] + header)
+    output_data.append([updated_date] + nederland_row)
+
+    # ---- OPSLAAN ----
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
 
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerows(data)
+        writer.writerows(output_data)
 
-    print(f"✔️ CSV opgeslagen met {len(data)} rijen en datum {updated_date}")
+    print(f"✔️ Nederland succesvol opgeslagen in {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     scrape_anwb()
