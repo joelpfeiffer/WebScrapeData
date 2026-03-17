@@ -15,7 +15,7 @@ toggle.addEventListener("click", () => {
 });
 
 /* -------------------------
-   LOAD COUNTRIES LIST
+   LANDEN LIJST LADEN
 --------------------------*/
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(res => res.json())
@@ -32,12 +32,15 @@ fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/da
         });
     });
 
+/* -------------------------
+   COUNTRY SELECTED
+--------------------------*/
 document.getElementById("landSelect").addEventListener("change", function () {
     loadCSV(this.value);
 });
 
 /* -------------------------
-   LOAD CSV
+   CSV LADEN
 --------------------------*/
 function loadCSV(land) {
     const url =
@@ -52,12 +55,12 @@ function loadCSV(land) {
 }
 
 /* -------------------------
-   PARSE PRICE STRING
+   GETAL OMZETTEN
 --------------------------*/
 function toNumber(v) {
     if (!v) return null;
     v = v.replace(/"/g, "").trim();
-    v = v.replace(/[^0-9.,-]/g, "");
+    v = v.replace(/[^0-9.,]/g, "");
     if (v.includes(",")) v = v.replace(/,/g, ".");
     const parts = v.split(".");
     if (parts.length > 2) v = parts[0] + "." + parts.slice(1).join("");
@@ -65,7 +68,7 @@ function toNumber(v) {
 }
 
 /* -------------------------
-   PARSE CSV
+   CSV PARSEN
 --------------------------*/
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
@@ -83,7 +86,7 @@ function parseCSV(csv) {
 }
 
 /* -------------------------
-   FIX: Duplicate datapoint if only 1 exists
+   FIX: ALTijd 2 punten zodat Chart.js normaal rendert
 --------------------------*/
 function fixOnePointData(data) {
     if (data.length === 1) {
@@ -94,7 +97,23 @@ function fixOnePointData(data) {
 }
 
 /* -------------------------
-   DATASET BUILDER
+   FIX: canvas volledig vervangen (Chart.js cache bug)
+--------------------------*/
+function resetCanvas() {
+    const oldCanvas = document.getElementById("trendChart");
+    const parent = oldCanvas.parentNode;
+    oldCanvas.remove();
+
+    const newCanvas = document.createElement("canvas");
+    newCanvas.id = "trendChart";
+    newCanvas.width = 700;
+    newCanvas.height = 350;
+
+    parent.appendChild(newCanvas);
+}
+
+/* -------------------------
+   DATASET BOUWER
 --------------------------*/
 function dataset(label, color, values) {
     return {
@@ -104,23 +123,23 @@ function dataset(label, color, values) {
         backgroundColor: color,
         fill: false,
         tension: 0.3,
-        showLine: true,      // ALWAYS draw a line
-        pointRadius: 5,
+        showLine: true,     // Altijd lijn tekenen (fix voor legend scaling)
+        pointRadius: 6,
         pointHoverRadius: 8,
         borderWidth: 2
     };
 }
 
 /* -------------------------
-   UPDATE CHART
+   UPDATE CHART (met Canvas Reset)
 --------------------------*/
-function updateChart(dataRaw) {
+function updateChart(rawData) {
 
-    // FIX: ALWAYS ensure 2 points
-    const data = fixOnePointData(dataRaw);
+    const data = fixOnePointData(rawData);
+
+    resetCanvas(); // <<< BELANGRIJKSTE FIX
 
     const ctx = document.getElementById("trendChart").getContext("2d");
-    if (chart) chart.destroy();
 
     const maxValue = Math.max(
         ...data.map(d => d.E5 || 0),
@@ -150,7 +169,10 @@ function updateChart(dataRaw) {
                 y: {
                     min: 0,
                     max: yMax,
-                    ticks: { stepSize: 0.1, precision: 2 }
+                    ticks: {
+                        precision: 2,
+                        stepSize: 0.1
+                    }
                 }
             },
 
@@ -169,7 +191,7 @@ function updateChart(dataRaw) {
 }
 
 /* -------------------------
-   RANGE BUTTONS
+   RANGE FILTER KNOPPEN
 --------------------------*/
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -179,7 +201,7 @@ document.querySelectorAll("button[data-range]").forEach(btn => {
 
         btn.classList.add("active");
 
-        const range = btn.getAttribute("data-range");
+        const range = btn.dataset.range;
 
         if (range === "all") {
             updateChart(fullData);
@@ -187,6 +209,8 @@ document.querySelectorAll("button[data-range]").forEach(btn => {
         }
 
         const days = parseInt(range);
-        updateChart(fullData.slice(-days));
+        const slice = fullData.slice(-days);
+        updateChart(slice);
     });
 });
+``
