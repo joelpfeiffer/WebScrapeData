@@ -1,38 +1,69 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <title>Brandstofprijzen Trend</title>
 
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: var(--bg);
+        color: var(--text);
+    }
 
-    select { padding: 8px; font-size: 16px; margin-bottom: 20px; }
+    /* Thema variabelen */
+    :root {
+        --bg: #ffffff;
+        --text: #000000;
+        --button-bg: #ffffff;
+        --button-border: #444;
+        --button-active-bg: #0078ff;
+        --button-active-text: #ffffff;
+        --canvas-bg: #ffffff;
+        --canvas-border: #ccc;
+    }
+
+    [data-theme="dark"] {
+        --bg: #121212;
+        --text: #e5e5e5;
+        --button-bg: #1e1e1e;
+        --button-border: #888;
+        --button-active-bg: #005bd1;
+        --button-active-text: #ffffff;
+        --canvas-bg: #1e1e1e;
+        --canvas-border: #555;
+    }
+
+    select {
+        padding: 8px;
+        font-size: 16px;
+    }
 
     button {
         padding: 6px 12px;
         margin: 3px;
-        border: 1px solid #444;
-        background: white;
-        cursor: pointer;
+        background: var(--button-bg);
+        color: var(--text);
+        border: 1px solid var(--button-border);
         border-radius: 4px;
-    }
-    button.active {
-        background: #0078ff;
-        color: white;
+        cursor: pointer;
     }
 
-    /* 🔥 VASTE GRAFIEK GROOTTE */
+    button.active {
+        background: var(--button-active-bg);
+        color: var(--button-active-text);
+    }
+
     #trendChart {
         width: 700px !important;
         height: 350px !important;
-        max-width: 700px;
-        max-height: 350px;
-        border: 1px solid #ccc;
-        background: white;
-        display: block;
+        background: var(--canvas-bg);
+        border: 1px solid var(--canvas-border);
+        margin-top: 20px;
     }
 </style>
 </head>
@@ -41,10 +72,10 @@
 
 <h1>Brandstofprijzen Trend</h1>
 
+<button id="themeToggle">🌙 Dark Mode</button>
+
 <label for="landSelect">Selecteer land:</label>
-<select id="landSelect">
-    <option>Data laden…</option>
-</select>
+<select id="landSelect"><option>Data laden…</option></select>
 
 <div class="controls">
     <button data-range="7">1 week</button>
@@ -60,6 +91,7 @@
 
 <canvas id="trendChart"></canvas>
 
+<!-- 🟢 DIT IS DE JUISTE MANIER -->
 <script src="script.js"></script>
 
 </body>
