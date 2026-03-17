@@ -15,7 +15,7 @@ toggle.addEventListener("click", () => {
 });
 
 /* -------------------------
-   LOAD CSV LIST FROM index.json
+   LOAD COUNTRY LIST (index.json)
 --------------------------*/
 fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/index.json")
     .then(res => res.json())
@@ -33,17 +33,18 @@ fetch("https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/da
     });
 
 /* -------------------------
-   LAND SELECT HANDLER
+   WHEN COUNTRY SELECTED
 --------------------------*/
 document.getElementById("landSelect").addEventListener("change", function () {
     loadCSV(this.value);
 });
 
 /* -------------------------
-   LOAD CSV FILE FOR LAND
+   LOAD CSV FILE
 --------------------------*/
 function loadCSV(land) {
-    const url = `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
+    const url =
+        `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/docs/data/${land}.csv`;
 
     fetch(url)
         .then(res => res.text())
@@ -54,7 +55,7 @@ function loadCSV(land) {
 }
 
 /* -------------------------
-   PARSE NUMBER STRING → FLOAT
+   PARSE PRICE STRING → FLOAT
 --------------------------*/
 function toNumber(v) {
     if (!v) return null;
@@ -62,22 +63,17 @@ function toNumber(v) {
     v = v.replace(/"/g, "").trim();
     v = v.replace(/[^0-9.,-]/g, "");
 
-    // convert comma → dot
-    if (v.includes(",")) {
-        v = v.replace(/,/g, ".");
-    }
+    if (v.includes(",")) v = v.replace(/,/g, ".");
 
-    // reduce multiple dots
     const parts = v.split(".");
-    if (parts.length > 2) {
+    if (parts.length > 2)
         v = parts[0] + "." + parts.slice(1).join("");
-    }
 
     return parseFloat(v);
 }
 
 /* -------------------------
-   PARSE CSV → RECORDS
+   PARSE CSV STRING
 --------------------------*/
 function parseCSV(csv) {
     const rows = csv.trim().split("\n").map(r => r.split(","));
@@ -93,9 +89,9 @@ function parseCSV(csv) {
 }
 
 /* -------------------------
-   DATASET BUILDER
+   BUILD DATASET OBJECT
 --------------------------*/
-function dataset(label, color, values, showLine) {
+function dataset(label, color, values, hasMultiplePoints) {
     return {
         label,
         data: values,
@@ -103,21 +99,28 @@ function dataset(label, color, values, showLine) {
         backgroundColor: color,
         fill: false,
         tension: 0.3,
-        showLine: showLine,
-        pointRadius: 5,
-        pointHoverRadius: 7
+
+        // 🔥 FIX: bij 1 datapunt geen lijn tekenen
+        showLine: hasMultiplePoints,
+
+        // 🔥 FIX: grootte van markers altijd consistent
+        pointStyle: "circle",
+        pointRadius: hasMultiplePoints ? 5 : 8,
+        pointHoverRadius: hasMultiplePoints ? 7 : 10,
+
+        // 🔥 FIX: lijnbreedte uit schakelen bij 1 punt
+        borderWidth: hasMultiplePoints ? 2 : 0
     };
 }
 
 /* -------------------------
-   TREND CHART — FIXED LEGEND & FIXED SCALING
+   CREATE TREND CHART
 --------------------------*/
 function updateChart(data) {
     const ctx = document.getElementById("trendChart").getContext("2d");
-
     if (chart) chart.destroy();
 
-    // Find highest price for proper Y-axis scaling
+    // Hoogste waarde zoeken
     const maxValue = Math.max(
         ...data.map(d => d.E5 || 0),
         ...data.map(d => d.E10 || 0),
@@ -125,8 +128,9 @@ function updateChart(data) {
         ...data.map(d => d.LPG || 0)
     );
 
-    // Extra breathing space
+    // Extra ruimte boven de lijn
     const yMax = maxValue + 0.2;
+
     const multiple = data.length > 1;
 
     chart = new Chart(ctx, {
@@ -156,8 +160,9 @@ function updateChart(data) {
             plugins: {
                 legend: {
                     labels: {
+                        // 🔥 FIX: Legenda-blokken altijd even groot
                         usePointStyle: true,
-                        pointStyle: 'rect',
+                        pointStyle: "rect",
                         boxWidth: 12,
                         boxHeight: 12,
                         padding: 20,
@@ -172,17 +177,16 @@ function updateChart(data) {
 }
 
 /* -------------------------
-   DATE RANGE BUTTONS
+   DATE RANGE FILTERS
 --------------------------*/
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
-
         document.querySelectorAll("button[data-range]")
             .forEach(b => b.classList.remove("active"));
 
         btn.classList.add("active");
 
-        const range = btn.getAttribute("data-range");
+        let range = btn.getAttribute("data-range");
 
         if (range === "all") {
             updateChart(fullData);
