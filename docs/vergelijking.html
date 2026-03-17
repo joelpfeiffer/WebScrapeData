@@ -26,47 +26,51 @@
         --table-bg: #1d1d1d;
     }
 
-    .topbar {
-        display: flex;
-        justify-content: flex-end;
-        margin-bottom: 20px;
+    .topnav {
+        text-align:right;
+        margin-bottom:20px;
     }
 
-    .switch-btn {
-        background: var(--table-bg);
-        border: 1px solid var(--border);
+    .switchPageBtn {
         padding: 8px 14px;
+        border: 1px solid var(--border);
+        background: var(--table-bg);
         cursor: pointer;
         border-radius: 4px;
     }
 
     table {
-        width: 100%;
         border-collapse: collapse;
-        margin-top: 25px;
+        width:100%;
         background: var(--table-bg);
+        margin-top:25px;
     }
 
     th, td {
-        border: 1px solid var(--border);
-        padding: 6px 10px;
+        border:1px solid var(--border);
+        padding:6px 10px;
     }
 
     th {
         background: var(--border);
+        color: var(--text);
     }
 </style>
 </head>
 
 <body>
 
-<div class="topbar">
-    <button class="switch-btn" onclick="window.location.href='index.html'">Ga naar Trendpagina</button>
+<div class="topnav">
+    index.html
+        <button class="switchPageBtn">⬅ Terug naar Trendpagina</button>
+    </a>
 </div>
+
+<button id="themeToggle">🌙 Donkere modus</button>
 
 <h1>Brandstofprijzen Vergelijking</h1>
 
-<select id="multiCountry" multiple size="6" style="min-width:250px;"></select>
+<select id="multiCountry" multiple size="8" style="min-width:250px;"></select>
 
 <div id="comparisonTable"></div>
 
