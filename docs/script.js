@@ -89,7 +89,7 @@ function parseCSV(csv) {
 }
 
 /* -------------------------
-   BUILD DATASET OBJECT
+   DATASET BUILDER
 --------------------------*/
 function dataset(label, color, values, hasMultiplePoints) {
     return {
@@ -100,15 +100,11 @@ function dataset(label, color, values, hasMultiplePoints) {
         fill: false,
         tension: 0.3,
 
-        // 🔥 FIX: bij 1 datapunt geen lijn tekenen
         showLine: hasMultiplePoints,
 
-        // 🔥 FIX: grootte van markers altijd consistent
-        pointStyle: "circle",
         pointRadius: hasMultiplePoints ? 5 : 8,
         pointHoverRadius: hasMultiplePoints ? 7 : 10,
 
-        // 🔥 FIX: lijnbreedte uit schakelen bij 1 punt
         borderWidth: hasMultiplePoints ? 2 : 0
     };
 }
@@ -120,7 +116,6 @@ function updateChart(data) {
     const ctx = document.getElementById("trendChart").getContext("2d");
     if (chart) chart.destroy();
 
-    // Hoogste waarde zoeken
     const maxValue = Math.max(
         ...data.map(d => d.E5 || 0),
         ...data.map(d => d.E10 || 0),
@@ -128,9 +123,7 @@ function updateChart(data) {
         ...data.map(d => d.LPG || 0)
     );
 
-    // Extra ruimte boven de lijn
     const yMax = maxValue + 0.2;
-
     const multiple = data.length > 1;
 
     chart = new Chart(ctx, {
@@ -147,6 +140,7 @@ function updateChart(data) {
         options: {
             responsive: false,
             maintainAspectRatio: false,
+
             scales: {
                 y: {
                     min: 0,
@@ -157,18 +151,16 @@ function updateChart(data) {
                     }
                 }
             },
+
             plugins: {
                 legend: {
                     labels: {
-                        // 🔥 FIX: Legenda-blokken altijd even groot
-                        usePointStyle: true,
-                        pointStyle: "rect",
+                        // 🔥 FIX: Zorg voor kleine, consistente blokjes
+                        usePointStyle: false,
                         boxWidth: 12,
                         boxHeight: 12,
-                        padding: 20,
-                        font: {
-                            size: 12
-                        }
+                        padding: 10,
+                        font: { size: 12 }
                     }
                 }
             }
@@ -177,16 +169,17 @@ function updateChart(data) {
 }
 
 /* -------------------------
-   DATE RANGE FILTERS
+   DATE RANGE BUTTONS
 --------------------------*/
 document.querySelectorAll("button[data-range]").forEach(btn => {
     btn.addEventListener("click", () => {
+
         document.querySelectorAll("button[data-range]")
             .forEach(b => b.classList.remove("active"));
 
         btn.classList.add("active");
 
-        let range = btn.getAttribute("data-range");
+        const range = btn.getAttribute("data-range");
 
         if (range === "all") {
             updateChart(fullData);
