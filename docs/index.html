@@ -2,72 +2,28 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<title>Brandstofprijzen Trends</title>
+<title>Brandstofprijzen Trend</title>
+<link rel="stylesheet" href="style.css">
 <style>
-    body { font-family: Arial; padding: 20px; background: #fafafa; }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
     select { padding: 8px; font-size: 16px; }
     table { margin-top: 20px; border-collapse: collapse; width: 500px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
 </style>
 </head>
+
 <body>
 
 <h1>Brandstofprijzen Trend</h1>
 
 <label for="landSelect">Selecteer land:</label>
 <select id="landSelect">
-    <option>Data laden...</option>
+    <option>CSV-bestanden laden...</option>
 </select>
 
 <div id="output"></div>
 
-<script>
-// 1. Haal alle CSV-bestanden op
-fetch("https://api.github.com/repos/joelpfeiffer/WebScrapeData/contents/data")
-    .then(res => res.json())
-    .then(files => {
-        const select = document.getElementById("landSelect");
-        select.innerHTML = ""; // leegmaken
-
-        files
-            .filter(f => f.name.endswith(".csv"))
-            .forEach(f => {
-                const land = f.name.replace(".csv", "");
-                const opt = document.createElement("option");
-                opt.value = land;
-                opt.textContent = land.charAt(0).toUpperCase() + land.slice(1);
-                select.appendChild(opt);
-            });
-    });
-
-// 2. Laad CSV bij selectie
-document.getElementById("landSelect").addEventListener("change", function(){
-    const land = this.value;
-
-    const url = `https://raw.githubusercontent.com/joelpfeiffer/WebScrapeData/main/data/${land}.csv`;
-
-    fetch(url)
-        .then(res => res.text())
-        .then(csv => {
-            const rows = csv.trim().split("\n").map(r => r.split(","));
-            renderTable(rows);
-        });
-});
-
-// 3. Toon CSV als HTML tabel
-function renderTable(rows) {
-    let html = "<table>";
-    rows.forEach((row, i) => {
-        html += "<tr>";
-        row.forEach(col => {
-            html += i === 0 ? `<th>${col}</th>` : `<td>${col}</td>`;
-        });
-        html += "</tr>";
-    });
-    html += "</table>";
-    document.getElementById("output").innerHTML = html;
-}
-</script>
+<script src="script.js"></script>
 
 </body>
 </html>
