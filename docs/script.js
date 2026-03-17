@@ -1,6 +1,9 @@
 // Pad naar de CSV in de repo
 const csvPath = "../data/nederland.csv";
 
+console.log("script.js is geladen!");
+
+
 // Grafiekkleuren
 const colors = {
     "Diesel (B7)": "rgba(255, 159, 64, 1)",
