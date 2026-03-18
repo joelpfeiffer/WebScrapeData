@@ -20,7 +20,6 @@
   <button onclick="downloadCSV()">Download CSV</button>
 </div>
 
-<!-- RANGE -->
 <div class="card">
   <strong>Periode:</strong>
 
@@ -43,7 +42,7 @@
   </div>
 </div>
 
-<!-- COMPARE GRAPH -->
+<!-- COMPARE -->
 <div class="card" id="compareCard">
   <h2>Vergelijk landen</h2>
 
@@ -56,11 +55,13 @@
       <select id="compareFuel"></select>
     </div>
 
-    <button onclick="compareCountries()">Vergelijk</button>
+    <!-- KNOPPEN NAAST ELKAAR -->
+    <div class="compare-buttons">
+      <button onclick="compareCountries()">Vergelijk</button>
+      <button onclick="toggleFullscreen('compareCard')">Fullscreen</button>
+    </div>
 
   </div>
-
-  <button onclick="toggleFullscreen('compareCard')">Fullscreen</button>
 
   <div class="chart-container">
     <canvas id="compareChart"></canvas>
@@ -73,7 +74,6 @@ let chart;
 let compareChart;
 let currentRange = null;
 
-// INIT
 fetch('data/all.json')
 .then(r=>r.json())
 .then(data=>{
@@ -99,7 +99,6 @@ fetch('data/all.json')
   loadData();
 });
 
-// RANGE
 function setRange(btn,days){
   currentRange = days;
 
@@ -114,7 +113,6 @@ function getColor(i){
   return c[i % c.length];
 }
 
-// MAIN GRAPH (ALLE BRANDSTOFFEN)
 function loadData(){
   const c = document.getElementById('country').value;
   let rows = allData[c].data;
@@ -159,7 +157,6 @@ function loadData(){
   chart.canvas.ondblclick = () => chart.resetZoom();
 }
 
-// COMPARE GRAPH
 function compareCountries(){
   const sel = Array.from(document.getElementById('multiCountry').selectedOptions)
     .map(o=>o.value);
@@ -209,7 +206,6 @@ function compareCountries(){
   compareChart.canvas.ondblclick = () => compareChart.resetZoom();
 }
 
-// FULLSCREEN
 function toggleFullscreen(id){
   const el = document.getElementById(id);
   el.classList.toggle("fullscreen");
@@ -220,7 +216,6 @@ function toggleFullscreen(id){
   },300);
 }
 
-// DOWNLOAD
 function downloadCSV(){
   const c = document.getElementById('country').value;
   const d = allData[c];
