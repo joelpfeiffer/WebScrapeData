@@ -17,24 +17,49 @@
 
 <h1>Brandstofprijzen Dashboard</h1>
 
+<!-- SELECT LAND -->
 <div class="card">
   <select id="country"></select>
   <button onclick="loadData()">Laden</button>
   <button onclick="downloadCSV()">Download CSV</button>
 </div>
 
+<!-- RANGE FILTER -->
+<div class="card">
+  <strong>Periode:</strong>
+  <button onclick="setRange(7)">1 week</button>
+  <button onclick="setRange(14)">2 weken</button>
+  <button onclick="setRange(30)">1 maand</button>
+  <button onclick="setRange(60)">2 maanden</button>
+  <button onclick="setRange(180)">6 maanden</button>
+  <button onclick="setRange(365)">1 jaar</button>
+  <button onclick="setRange(730)">2 jaar</button>
+  <button onclick="setRange(null)">Alles</button>
+</div>
+
+<!-- MAIN CHART -->
 <div class="card">
   <p id="trend"></p>
   <canvas id="chart"></canvas>
 </div>
 
+<!-- COMPARE -->
 <div class="card">
   <h2>Vergelijk landen</h2>
+
   <select id="multiCountry" multiple size="6"></select>
+
+  <div style="margin-top:10px;">
+    <strong>Brandstof:</strong>
+    <select id="compareFuel"></select>
+  </div>
+
   <button onclick="compareCountries()">Vergelijk</button>
+
   <canvas id="compareChart"></canvas>
 </div>
 
+<!-- TOP 5 -->
 <div class="card">
   <h2>Top 5 goedkoopste landen (Euro95)</h2>
   <ol id="top5"></ol>
@@ -44,7 +69,9 @@
 let allData = {};
 let chart;
 let compareChart;
+let currentRange = null;
 
+// ================= INIT =================
 fetch('data/all.json')
 .then(r => r.json())
 .then(data => {
@@ -54,7 +81,7 @@ fetch('data/all.json')
   const multiSel = document.getElementById('multiCountry');
 
   Object.keys(data).forEach(c => {
-    let name = c.charAt(0).toUpperCase() + c.slice(1);
+    const name = capitalize(c);
 
     let o1 = document.createElement('option');
     o1.value = c;
@@ -67,30 +94,61 @@ fetch('data/all.json')
     multiSel.appendChild(o2);
   });
 
+  // fuel selector vullen
+  const first = Object.keys(data)[0];
+  const fuels = data[first].header.slice(1);
+
+  const fuelSel = document.getElementById('compareFuel');
+
+  fuels.forEach((f, i) => {
+    let o = document.createElement('option');
+    o.value = i + 1;
+    o.textContent = f;
+    fuelSel.appendChild(o);
+  });
+
   loadData();
   buildTop5();
 });
+
+// ================= HELPERS =================
+function capitalize(str){
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
 
 function getColor(i){
   const colors = ["#3b82f6","#22c55e","#f59e0b","#ef4444","#a855f7","#06b6d4"];
   return colors[i % colors.length];
 }
 
+function setRange(days){
+  currentRange = days;
+  loadData();
+}
+
+// ================= MAIN CHART =================
 function loadData(){
   const country = document.getElementById('country').value;
   const d = allData[country];
 
-  const dates = d.data.map(r => r[0]);
+  let rows = d.data;
+
+  if(currentRange){
+    rows = rows.slice(-currentRange);
+  }
+
+  const dates = rows.map(r => r[0]);
   const fuels = d.header.slice(1);
 
   const datasets = fuels.map((fuel, i) => ({
     label: fuel,
-    data: d.data.map(r => parseFloat(r[i+1])),
+    data: rows.map(r => parseFloat(r[i+1])),
     borderColor: getColor(i),
     tension: 0.2
   }));
 
-  const prices = d.data.map(r => parseFloat(r[1]));
+  // trend op Euro95
+  const prices = rows.map(r => parseFloat(r[1]));
   const last = prices.at(-1);
   const prev = prices.at(-2);
 
@@ -98,9 +156,10 @@ function loadData(){
 
   if(prev){
     const diff = last - prev;
-    trendEl.textContent = diff > 0 
+    trendEl.textContent = diff > 0
       ? `Stijging (Euro95): +${diff.toFixed(3)}`
       : `Daling (Euro95): ${diff.toFixed(3)}`;
+
     trendEl.className = diff > 0 ? "trend-up" : "trend-down";
   }
 
@@ -108,22 +167,42 @@ function loadData(){
 
   chart = new Chart(document.getElementById('chart'), {
     type: 'line',
-    data: { labels: dates, datasets: datasets }
+    data: {
+      labels: dates,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true }
+      }
+    }
   });
 }
 
+// ================= COMPARE =================
 function compareCountries(){
   const selected = Array.from(document.getElementById('multiCountry').selectedOptions)
     .map(o => o.value);
 
   if(selected.length === 0) return;
 
-  const datasets = selected.map((c,i)=>({
-    label: c,
-    data: allData[c].data.map(r=>parseFloat(r[1])),
-    borderColor: getColor(i),
-    tension: 0.2
-  }));
+  const fuelIndex = parseInt(document.getElementById('compareFuel').value);
+
+  const datasets = selected.map((c, i) => {
+    let rows = allData[c].data;
+
+    if(currentRange){
+      rows = rows.slice(-currentRange);
+    }
+
+    return {
+      label: capitalize(c),
+      data: rows.map(r => parseFloat(r[fuelIndex])),
+      borderColor: getColor(i),
+      tension: 0.2
+    };
+  });
 
   const labels = allData[selected[0]].data.map(r => r[0]);
 
@@ -131,16 +210,23 @@ function compareCountries(){
 
   compareChart = new Chart(document.getElementById('compareChart'), {
     type: 'line',
-    data: { labels: labels, datasets: datasets }
+    data: {
+      labels: labels,
+      datasets: datasets
+    }
   });
 }
 
+// ================= TOP 5 =================
 function buildTop5(){
   let list = [];
 
   for(const c in allData){
     const last = allData[c].data.at(-1);
-    list.push({ land:c, prijs:parseFloat(last[1]) });
+    list.push({
+      land: c,
+      prijs: parseFloat(last[1])
+    });
   }
 
   list.sort((a,b)=>a.prijs-b.prijs);
@@ -150,11 +236,12 @@ function buildTop5(){
 
   list.slice(0,5).forEach(i=>{
     let li = document.createElement('li');
-    li.textContent = `${i.land} - ${i.prijs.toFixed(3)}`;
+    li.textContent = `${capitalize(i.land)} - ${i.prijs.toFixed(3)}`;
     el.appendChild(li);
   });
 }
 
+// ================= DOWNLOAD =================
 function downloadCSV(){
   const country = document.getElementById('country').value;
   const d = allData[country];
