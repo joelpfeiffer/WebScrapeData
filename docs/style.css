@@ -1,0 +1,65 @@
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #e2e8f0;
+  --accent: #3b82f6;
+  --border: #334155;
+}
+
+body {
+  font-family: system-ui, Arial;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 20px;
+}
+
+h1, h2 {
+  margin-bottom: 10px;
+}
+
+.nav {
+  margin-bottom: 20px;
+}
+
+.nav a {
+  margin-right: 10px;
+  text-decoration: none;
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.nav a:hover {
+  background: var(--accent);
+}
+
+.card {
+  background: var(--card);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+select, button {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+td, th {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trend-up { color: #22c55e; }
+.trend-down { color: #ef4444; }
