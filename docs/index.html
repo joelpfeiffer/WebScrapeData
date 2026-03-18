@@ -2,7 +2,6 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/png" href="favicon.png">
 <title>Dashboard</title>
 
 <link rel="stylesheet" href="style.css">
@@ -12,12 +11,12 @@
 </head>
 
 <body>
-  
+
 <div class="nav">
-  <a href="index.html">Dashboard</a>
+  <a href="index.html" class="active">Dashboard</a>
   <a href="vergelijking.html">Vergelijking</a>
 </div>
-  
+
 <h1>Brandstofprijzen Dashboard</h1>
 
 <div class="card">
@@ -61,7 +60,6 @@
       <select id="compareFuel"></select>
     </div>
 
-    <!-- KNOPPEN NAAST ELKAAR -->
     <div class="compare-buttons">
       <button onclick="compareCountries()">Vergelijk</button>
       <button onclick="toggleFullscreen('compareCard')">Fullscreen</button>
@@ -80,7 +78,30 @@ let chart;
 let compareChart;
 let currentRange = null;
 
-fetch('data/all.json')
+/* ================= CROSSHAIR ================= */
+const crosshairPlugin = {
+  id: 'crosshair',
+  afterDraw: (chart) => {
+    if (chart.tooltip?._active?.length) {
+      const ctx = chart.ctx;
+      const x = chart.tooltip._active[0].element.x;
+      const topY = chart.scales.y.top;
+      const bottomY = chart.scales.y.bottom;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x, topY);
+      ctx.lineTo(x, bottomY);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#94a3b8';
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+};
+
+/* ================= INIT ================= */
+fetch('data/all.json?v=' + Date.now())
 .then(r=>r.json())
 .then(data=>{
   allData = data;
@@ -105,6 +126,7 @@ fetch('data/all.json')
   loadData();
 });
 
+/* ================= RANGE ================= */
 function setRange(btn,days){
   currentRange = days;
 
@@ -119,6 +141,7 @@ function getColor(i){
   return c[i % c.length];
 }
 
+/* ================= MAIN GRAPH ================= */
 function loadData(){
   const c = document.getElementById('country').value;
   let rows = allData[c].data;
@@ -143,13 +166,14 @@ function loadData(){
     options:{
       responsive:true,
       maintainAspectRatio:false,
+      interaction:{
+        mode:'index',
+        intersect:false
+      },
       plugins:{
-        legend:{
-          onClick:(e,i,l)=>{
-            const ci=l.chart;
-            ci.data.datasets[i.datasetIndex].hidden =
-              !ci.data.datasets[i.datasetIndex].hidden;
-            ci.update();
+        tooltip:{
+          callbacks:{
+            label: ctx => `${ctx.dataset.label}: € ${ctx.raw.toFixed(3)}`
           }
         },
         zoom:{
@@ -157,17 +181,22 @@ function loadData(){
           zoom:{wheel:{enabled:true},mode:'x'}
         }
       }
-    }
+    },
+    plugins:[crosshairPlugin]
   });
 
   chart.canvas.ondblclick = () => chart.resetZoom();
 }
 
+/* ================= COMPARE ================= */
 function compareCountries(){
   const sel = Array.from(document.getElementById('multiCountry').selectedOptions)
     .map(o=>o.value);
 
-  if(sel.length === 0) return;
+  if(sel.length === 0){
+    alert("Selecteer minimaal één land");
+    return;
+  }
 
   const fuel = parseInt(document.getElementById('compareFuel').value);
 
@@ -192,26 +221,24 @@ function compareCountries(){
     options:{
       responsive:true,
       maintainAspectRatio:false,
+      interaction:{
+        mode:'index',
+        intersect:false
+      },
       plugins:{
-        legend:{
-          onClick:(e,i,l)=>{
-            const ci=l.chart;
-            ci.data.datasets[i.datasetIndex].hidden =
-              !ci.data.datasets[i.datasetIndex].hidden;
-            ci.update();
-          }
-        },
         zoom:{
           pan:{enabled:true,mode:'x'},
           zoom:{wheel:{enabled:true},mode:'x'}
         }
       }
-    }
+    },
+    plugins:[crosshairPlugin]
   });
 
   compareChart.canvas.ondblclick = () => compareChart.resetZoom();
 }
 
+/* ================= FULLSCREEN ================= */
 function toggleFullscreen(id){
   const el = document.getElementById(id);
   el.classList.toggle("fullscreen");
@@ -222,12 +249,16 @@ function toggleFullscreen(id){
   },300);
 }
 
+/* ================= DOWNLOAD ================= */
 function downloadCSV(){
   const c = document.getElementById('country').value;
   const d = allData[c];
 
-  let csv = d.header.join(",")+"\\n";
-  d.data.forEach(r=>csv+=r.join(",")+"\\n");
+  let csv = "Datum," + d.header.slice(1).join(",") + "\\n";
+
+  d.data.forEach(row=>{
+    csv += row[0] + "," + row.slice(1).join(",") + "\\n";
+  });
 
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv]));
