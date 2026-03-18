@@ -57,21 +57,22 @@ button {
   box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
-/* hover */
+/* hover lift */
 button:hover {
-  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.4);
 }
 
-/* klik animatie */
+/* klik indruk effect */
 button:active {
-  transform: scale(0.95);
-  opacity: 0.85;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transform: scale(0.92);
+  background: #2563eb;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-/* actieve knop */
+/* actieve selectie (bonus gradient) */
 button.active {
-  background: var(--active);
+  background: linear-gradient(135deg, #22c55e, #16a34a);
 }
 
 /* SELECT */
