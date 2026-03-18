@@ -1,96 +1,82 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Dashboard</title>
-
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
 
 <div class="nav">
-  <a href="index.html">Dashboard</a>
-  <a href="vergelijking.html">Vergelijking</a>
+<a href="index.html">Dashboard</a>
+<a href="vergelijking.html">Vergelijking</a>
 </div>
 
-<h1>Brandstofprijzen Dashboard</h1>
+<h1>Dashboard</h1>
 
 <div class="card">
-  <select id="country"></select>
-  <button onclick="loadData()">Laden</button>
+<select id="country"></select>
+<button onclick="loadData()">Laden</button>
+<button onclick="downloadCSV()">Download CSV</button>
 </div>
 
 <div class="card">
-  <h2 id="title"></h2>
-  <p id="trend"></p>
-  <canvas id="chart"></canvas>
+<p id="trend"></p>
+<canvas id="chart"></canvas>
 </div>
 
 <script>
-let chart;
+let allData={}, chart;
 
-fetch('data/index.json')
-  .then(r => r.json())
-  .then(countries => {
-    const sel = document.getElementById('country');
-    countries.forEach(c => {
-      let o = document.createElement('option');
-      o.value = c;
-      o.textContent = c;
-      sel.appendChild(o);
-    });
-    loadData();
+fetch('data/all.json')
+.then(r=>r.json())
+.then(d=>{
+  allData=d;
+  const sel=document.getElementById('country');
+  Object.keys(d).forEach(c=>{
+    let o=document.createElement('option');
+    o.value=c; o.textContent=c;
+    sel.appendChild(o);
   });
+  loadData();
+});
 
 function loadData(){
-  const country = document.getElementById('country').value;
+  const c=document.getElementById('country').value;
+  const d=allData[c];
 
-  fetch(`data/${country}.csv`)
-    .then(r => r.text())
-    .then(text => {
-      const rows = text.trim().split('\n').slice(1);
-      const data = rows.map(r => r.split(','));
+  const dates=d.data.map(r=>r[0]);
+  const prices=d.data.map(r=>parseFloat(r[1]));
 
-      const dates = data.map(r => r[0]);
-      const prices = data.map(r => parseFloat(r[1]));
+  const last=prices.at(-1), prev=prices.at(-2);
+  const t=document.getElementById('trend');
 
-      const last = prices.at(-1);
-      const prev = prices.at(-2);
+  if(prev){
+    const diff=last-prev;
+    t.textContent=diff>0?`Stijging +${diff.toFixed(3)}`:`Daling ${diff.toFixed(3)}`;
+    t.className=diff>0?"trend-up":"trend-down";
+  }
 
-      const trendEl = document.getElementById('trend');
+  if(chart) chart.destroy();
+  chart=new Chart(document.getElementById('chart'),{
+    type:'line',
+    data:{labels:dates,datasets:[{data:prices}]}
+  });
+}
 
-      if(prev){
-        const diff = last - prev;
-        if(diff > 0){
-          trendEl.textContent = `Stijging: +${diff.toFixed(3)}`;
-          trendEl.className = "trend-up";
-        } else {
-          trendEl.textContent = `Daling: ${diff.toFixed(3)}`;
-          trendEl.className = "trend-down";
-        }
-      }
+function downloadCSV(){
+  const c=document.getElementById('country').value;
+  const d=allData[c];
 
-      document.getElementById('title').textContent = country;
+  let csv=d.header.join(",")+"\n";
+  d.data.forEach(r=>csv+=r.join(",")+"\n");
 
-      if(chart) chart.destroy();
-
-      chart = new Chart(document.getElementById('chart'), {
-        type: 'line',
-        data: {
-          labels: dates,
-          datasets: [{
-            label: 'Prijs',
-            data: prices
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } }
-        }
-      });
-    });
+  const blob=new Blob([csv]);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=c+".csv";
+  a.click();
 }
 </script>
 

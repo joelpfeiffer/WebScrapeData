@@ -1,75 +1,56 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Vergelijking</title>
-
 <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
 <div class="nav">
-  <a href="index.html">Dashboard</a>
-  <a href="vergelijking.html">Vergelijking</a>
+<a href="index.html">Dashboard</a>
+<a href="vergelijking.html">Vergelijking</a>
 </div>
 
-<h1>Vergelijk landen</h1>
+<h1>Vergelijking</h1>
 
 <div class="card">
-  <button onclick="load()">Laden</button>
-  <button onclick="sortTable()">Sorteer op prijs</button>
+<button onclick="load()">Laden</button>
+<button onclick="sort()">Sorteer</button>
 
-  <table id="table">
-    <thead>
-      <tr>
-        <th>Land</th>
-        <th>Laatste prijs</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<table>
+<thead><tr><th>Land</th><th>Prijs</th></tr></thead>
+<tbody id="body"></tbody>
+</table>
 </div>
 
 <script>
-let dataStore = [];
+let data=[];
 
 function load(){
-  fetch('data/index.json')
-    .then(r => r.json())
-    .then(async countries => {
-
-      dataStore = [];
-
-      for(const c of countries){
-        const text = await fetch(`data/${c}.csv`).then(r => r.text());
-        const rows = text.trim().split('\n');
-        const last = rows.at(-1).split(',');
-
-        dataStore.push({
-          land: c,
-          prijs: parseFloat(last[1])
-        });
-      }
-
-      render();
-    });
+fetch('data/all.json')
+.then(r=>r.json())
+.then(d=>{
+  data=[];
+  for(const c in d){
+    const last=d[c].data.at(-1);
+    data.push({land:c, prijs:parseFloat(last[1])});
+  }
+  render();
+});
 }
 
 function render(){
-  const tbody = document.querySelector("#table tbody");
-  tbody.innerHTML = "";
-
-  dataStore.forEach(d => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${d.land}</td><td>${d.prijs.toFixed(3)}</td>`;
-    tbody.appendChild(tr);
-  });
+const b=document.getElementById('body');
+b.innerHTML="";
+data.forEach(d=>{
+  b.innerHTML+=`<tr><td>${d.land}</td><td>${d.prijs}</td></tr>`;
+});
 }
 
-function sortTable(){
-  dataStore.sort((a,b) => a.prijs - b.prijs);
-  render();
+function sort(){
+data.sort((a,b)=>a.prijs-b.prijs);
+render();
 }
 </script>
 
