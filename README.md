@@ -1,3 +1,1 @@
-# WebScrapeData
-
-https://joelpfeiffer.github.io/WebScrapeData/
+# Fuel scraper
