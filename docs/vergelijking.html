@@ -35,7 +35,6 @@ function load(){
   fetch('data/all.json')
   .then(r=>r.json())
   .then(d=>{
-
     const headers = d[Object.keys(d)[0]].header;
 
     document.getElementById('thead').innerHTML =
@@ -47,7 +46,7 @@ function load(){
 
     for(const c in d){
       const last = d[c].data.at(-1);
-      data.push({ land:capitalize(c), values:last.slice(1) });
+      data.push({ land:c, values:last.slice(1) });
     }
 
     render();
@@ -71,10 +70,6 @@ function render(){
 function sort(){
   data.sort((a,b)=>parseFloat(a.values[0]) - parseFloat(b.values[0]));
   render();
-}
-
-function capitalize(str){
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 </script>
 
