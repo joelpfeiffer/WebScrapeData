@@ -1,56 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
 <meta charset="UTF-8">
 <title>Vergelijking</title>
 <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <div class="nav">
-<a href="index.html">Dashboard</a>
-<a href="vergelijking.html">Vergelijking</a>
+  <a href="index.html">Dashboard</a>
+  <a href="vergelijking.html">Vergelijking</a>
 </div>
 
-<h1>Vergelijking</h1>
+<h1>Vergelijk landen</h1>
 
 <div class="card">
-<button onclick="load()">Laden</button>
-<button onclick="sort()">Sorteer</button>
+  <button onclick="load()">Laden</button>
+  <button onclick="sort()">Sorteer op prijs</button>
 
-<table>
-<thead><tr><th>Land</th><th>Prijs</th></tr></thead>
-<tbody id="body"></tbody>
-</table>
+  <table>
+    <thead>
+      <tr>
+        <th>Land</th>
+        <th>Euro95</th>
+      </tr>
+    </thead>
+    <tbody id="body"></tbody>
+  </table>
 </div>
 
 <script>
-let data=[];
+let data = [];
 
 function load(){
-fetch('data/all.json')
-.then(r=>r.json())
-.then(d=>{
-  data=[];
-  for(const c in d){
-    const last=d[c].data.at(-1);
-    data.push({land:c, prijs:parseFloat(last[1])});
-  }
-  render();
-});
+  document.getElementById('body').innerHTML = "Laden...";
+
+  fetch('data/all.json')
+  .then(r=>r.json())
+  .then(d=>{
+    data = [];
+
+    for(const c in d){
+      const last = d[c].data.at(-1);
+      data.push({
+        land:c,
+        prijs:parseFloat(last[1])
+      });
+    }
+
+    render();
+  });
 }
 
 function render(){
-const b=document.getElementById('body');
-b.innerHTML="";
-data.forEach(d=>{
-  b.innerHTML+=`<tr><td>${d.land}</td><td>${d.prijs}</td></tr>`;
-});
+  const b = document.getElementById('body');
+  b.innerHTML = "";
+
+  data.forEach(d=>{
+    b.innerHTML += `<tr><td>${d.land}</td><td>${d.prijs.toFixed(3)}</td></tr>`;
+  });
 }
 
 function sort(){
-data.sort((a,b)=>a.prijs-b.prijs);
-render();
+  data.sort((a,b)=>a.prijs-b.prijs);
+  render();
 }
 </script>
 
