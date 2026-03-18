@@ -1,81 +1,171 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
 <meta charset="UTF-8">
 <title>Dashboard</title>
+
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
 
 <div class="nav">
-<a href="index.html">Dashboard</a>
-<a href="vergelijking.html">Vergelijking</a>
+  <a href="index.html">Dashboard</a>
+  <a href="vergelijking.html">Vergelijking</a>
 </div>
 
-<h1>Dashboard</h1>
+<h1>Brandstofprijzen Dashboard</h1>
 
 <div class="card">
-<select id="country"></select>
-<button onclick="loadData()">Laden</button>
-<button onclick="downloadCSV()">Download CSV</button>
+  <select id="country"></select>
+  <button onclick="loadData()">Laden</button>
+  <button onclick="downloadCSV()">Download CSV</button>
 </div>
 
 <div class="card">
-<p id="trend"></p>
-<canvas id="chart"></canvas>
+  <p id="trend"></p>
+  <canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+  <h2>Vergelijk landen</h2>
+  <select id="multiCountry" multiple size="6"></select>
+  <button onclick="compareCountries()">Vergelijk</button>
+  <canvas id="compareChart"></canvas>
+</div>
+
+<div class="card">
+  <h2>Top 5 goedkoopste landen (Euro95)</h2>
+  <ol id="top5"></ol>
 </div>
 
 <script>
-let allData={}, chart;
+let allData = {};
+let chart;
+let compareChart;
 
 fetch('data/all.json')
-.then(r=>r.json())
-.then(d=>{
-  allData=d;
-  const sel=document.getElementById('country');
-  Object.keys(d).forEach(c=>{
-    let o=document.createElement('option');
-    o.value=c; o.textContent=c;
-    sel.appendChild(o);
+.then(r => r.json())
+.then(data => {
+  allData = data;
+
+  const countrySel = document.getElementById('country');
+  const multiSel = document.getElementById('multiCountry');
+
+  Object.keys(data).forEach(c => {
+    let name = c.charAt(0).toUpperCase() + c.slice(1);
+
+    let o1 = document.createElement('option');
+    o1.value = c;
+    o1.textContent = name;
+    countrySel.appendChild(o1);
+
+    let o2 = document.createElement('option');
+    o2.value = c;
+    o2.textContent = name;
+    multiSel.appendChild(o2);
   });
+
   loadData();
+  buildTop5();
 });
 
+function getColor(i){
+  const colors = ["#3b82f6","#22c55e","#f59e0b","#ef4444","#a855f7","#06b6d4"];
+  return colors[i % colors.length];
+}
+
 function loadData(){
-  const c=document.getElementById('country').value;
-  const d=allData[c];
+  const country = document.getElementById('country').value;
+  const d = allData[country];
 
-  const dates=d.data.map(r=>r[0]);
-  const prices=d.data.map(r=>parseFloat(r[1]));
+  const dates = d.data.map(r => r[0]);
+  const fuels = d.header.slice(1);
 
-  const last=prices.at(-1), prev=prices.at(-2);
-  const t=document.getElementById('trend');
+  const datasets = fuels.map((fuel, i) => ({
+    label: fuel,
+    data: d.data.map(r => parseFloat(r[i+1])),
+    borderColor: getColor(i),
+    tension: 0.2
+  }));
+
+  const prices = d.data.map(r => parseFloat(r[1]));
+  const last = prices.at(-1);
+  const prev = prices.at(-2);
+
+  const trendEl = document.getElementById('trend');
 
   if(prev){
-    const diff=last-prev;
-    t.textContent=diff>0?`Stijging +${diff.toFixed(3)}`:`Daling ${diff.toFixed(3)}`;
-    t.className=diff>0?"trend-up":"trend-down";
+    const diff = last - prev;
+    trendEl.textContent = diff > 0 
+      ? `Stijging (Euro95): +${diff.toFixed(3)}`
+      : `Daling (Euro95): ${diff.toFixed(3)}`;
+    trendEl.className = diff > 0 ? "trend-up" : "trend-down";
   }
 
   if(chart) chart.destroy();
-  chart=new Chart(document.getElementById('chart'),{
-    type:'line',
-    data:{labels:dates,datasets:[{data:prices}]}
+
+  chart = new Chart(document.getElementById('chart'), {
+    type: 'line',
+    data: { labels: dates, datasets: datasets }
+  });
+}
+
+function compareCountries(){
+  const selected = Array.from(document.getElementById('multiCountry').selectedOptions)
+    .map(o => o.value);
+
+  if(selected.length === 0) return;
+
+  const datasets = selected.map((c,i)=>({
+    label: c,
+    data: allData[c].data.map(r=>parseFloat(r[1])),
+    borderColor: getColor(i),
+    tension: 0.2
+  }));
+
+  const labels = allData[selected[0]].data.map(r => r[0]);
+
+  if(compareChart) compareChart.destroy();
+
+  compareChart = new Chart(document.getElementById('compareChart'), {
+    type: 'line',
+    data: { labels: labels, datasets: datasets }
+  });
+}
+
+function buildTop5(){
+  let list = [];
+
+  for(const c in allData){
+    const last = allData[c].data.at(-1);
+    list.push({ land:c, prijs:parseFloat(last[1]) });
+  }
+
+  list.sort((a,b)=>a.prijs-b.prijs);
+
+  const el = document.getElementById('top5');
+  el.innerHTML = "";
+
+  list.slice(0,5).forEach(i=>{
+    let li = document.createElement('li');
+    li.textContent = `${i.land} - ${i.prijs.toFixed(3)}`;
+    el.appendChild(li);
   });
 }
 
 function downloadCSV(){
-  const c=document.getElementById('country').value;
-  const d=allData[c];
+  const country = document.getElementById('country').value;
+  const d = allData[country];
 
-  let csv=d.header.join(",")+"\n";
-  d.data.forEach(r=>csv+=r.join(",")+"\n");
+  let csv = d.header.join(",") + "\n";
+  d.data.forEach(r => csv += r.join(",") + "\n");
 
-  const blob=new Blob([csv]);
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=c+".csv";
+  const blob = new Blob([csv]);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = country + ".csv";
   a.click();
 }
 </script>
