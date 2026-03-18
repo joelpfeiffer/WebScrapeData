@@ -1,5 +1,6 @@
 import os
 import csv
+import json
 import unicodedata
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -23,13 +24,8 @@ def get_last_date_from_csv(path):
     except:
         return None
 
-def clean_price(value):
-    if not value:
-        return ""
-    v = value.replace('"','').replace(" ","").strip()
-    v = ''.join(c for c in v if c.isdigit() or c in ",.")
-    v = v.replace(",", ".")
-    return v
+def clean_price(v):
+    return v.replace(",", ".").strip()
 
 def normalize_land(land):
     land = unicodedata.normalize("NFKD", land)
@@ -38,10 +34,29 @@ def normalize_land(land):
 
 def get_csv_path(land):
     base = os.path.dirname(__file__)
-    safe = land.replace(" ", "_")
-    return os.path.join(base, "..", "docs", "data", f"{safe}.csv")
+    return os.path.join(base, "..", "docs", "data", f"{land}.csv")
 
-def scrape_anwb():
+def generate_json(countries):
+    base = os.path.join(os.path.dirname(__file__), "..", "docs", "data")
+    output = {}
+
+    for land in countries:
+        path = os.path.join(base, f"{land}.csv")
+        if not os.path.isfile(path):
+            continue
+
+        with open(path, "r", encoding="utf-8") as f:
+            rows = [r for r in csv.reader(f) if r]
+
+        output[land] = {
+            "header": rows[0],
+            "data": rows[1:]
+        }
+
+    with open(os.path.join(base, "all.json"), "w") as f:
+        json.dump(output, f)
+
+def scrape():
     today = get_today_date()
 
     with sync_playwright() as p:
@@ -51,6 +66,7 @@ def scrape_anwb():
         page.wait_for_selector("table tr")
 
         rows = page.query_selector_all("table tr")
+
         header = None
         countries = {}
 
@@ -58,6 +74,7 @@ def scrape_anwb():
             cols = [c.inner_text().strip() for c in row.query_selector_all("th, td")]
             if not cols:
                 continue
+
             if header is None:
                 header = cols[1:]
                 continue
@@ -66,13 +83,13 @@ def scrape_anwb():
             land = normalize_land(land_raw)
             values = [clean_price(v) for v in cols[1:]]
 
-            countries[land] = {"display": land_raw, "values": values}
+            countries[land] = {"values": values}
 
     for land, info in countries.items():
         path = get_csv_path(land)
-        last_date = get_last_date_from_csv(path)
+        last = get_last_date_from_csv(path)
 
-        if last_date == today:
+        if last == today:
             continue
 
         rows_out = []
@@ -84,13 +101,9 @@ def scrape_anwb():
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
         with open(path, "a", newline="\n", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerows(rows_out)
+            csv.writer(f).writerows(rows_out)
 
-    # generate index.json
-    index = list(countries.keys())
-    with open(os.path.join(os.path.dirname(__file__), "..", "docs", "data", "index.json"), "w") as f:
-        json.dump(index, f)
+    generate_json(countries.keys())
 
 if __name__ == "__main__":
-    scrape_anwb()
+    scrape()
