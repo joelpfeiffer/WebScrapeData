@@ -1,119 +1,98 @@
 <!DOCTYPE html>
-<html lang="nl" data-theme="light">
+<html lang="nl">
 <head>
 <meta charset="UTF-8">
-<title>Brandstofprijzen Trend</title>
+<title>Dashboard</title>
 
-<!-- Chart.js -->
+<link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        background: var(--bg);
-        color: var(--text);
-    }
-
-    :root {
-        --bg: #ffffff;
-        --text: #000000;
-        --button-bg: #ffffff;
-        --button-border: #444;
-        --button-active-bg: #0078ff;
-        --button-active-text: #ffffff;
-        --canvas-bg: #ffffff;
-        --canvas-border: #ccc;
-    }
-
-    [data-theme="dark"] {
-        --bg: #121212;
-        --text: #e5e5e5;
-        --button-bg: #1e1e1e;
-        --button-border: #888;
-        --button-active-bg: #005bd1;
-        --button-active-text: #ffffff;
-        --canvas-bg: #1e1e1e;
-        --canvas-border: #555;
-    }
-
-    .topnav {
-        text-align: right;
-        margin-bottom: 20px;
-    }
-
-    .switchPageBtn {
-        padding: 8px 14px;
-        border: 1px solid var(--button-border);
-        background: var(--button-bg);
-        color: var(--text);
-        border-radius: 4px;
-        cursor: pointer;
-        text-decoration: none;
-        font-size: 14px;
-        display: inline-block;
-        margin-top: 10px;
-    }
-
-    #trendChart {
-        width: 900px;
-        height: 400px;
-        background: var(--canvas-bg);
-        border: 1px solid var(--canvas-border);
-        margin-top: 20px;
-    }
-
-    button {
-        padding: 6px 12px;
-        margin: 3px;
-        border: 1px solid var(--button-border);
-        background: var(--button-bg);
-        color: var(--text);
-        cursor: pointer;
-        border-radius: 4px;
-    }
-
-    button.active {
-        background: var(--button-active-bg);
-        color: var(--button-active-text);
-    }
-</style>
 </head>
 
 <body>
 
-<!-- ⭐ DIT IS DE WERKENDE KNOP -->
-<div class="topnav">
-    <a href="vergelijking.html" class="switchPageBtn">
-        ➡ Ga naar Vergelijkingstabel
-    </a>
+<div class="nav">
+  <a href="index.html">Dashboard</a>
+  <a href="vergelijking.html">Vergelijking</a>
 </div>
 
-<!-- 🌙 DARK MODE -->
-<button id="themeToggle">🌙 Donkere modus</button>
+<h1>Brandstofprijzen Dashboard</h1>
 
-<h1>Brandstofprijzen Trend</h1>
-
-<label for="landSelect">Selecteer land:</label>
-<select id="landSelect">
-    <option>Data laden…</option>
-</select>
-
-<div>
-    <button data-range="7">1 week</button>
-    <button data-range="14">2 weken</button>
-    <button data-range="30">1 maand</button>
-    <button data-range="60">2 maanden</button>
-    <button data-range="90">3 maanden</button>
-    <button data-range="180">6 maanden</button>
-    <button data-range="365">1 jaar</button>
-    <button data-range="730">2 jaar</button>
-    <button data-range="all" class="active">Alles</button>
+<div class="card">
+  <select id="country"></select>
+  <button onclick="loadData()">Laden</button>
 </div>
 
-<canvas id="trendChart"></canvas>
+<div class="card">
+  <h2 id="title"></h2>
+  <p id="trend"></p>
+  <canvas id="chart"></canvas>
+</div>
 
-<script src="script.js"></script>
+<script>
+let chart;
+
+fetch('data/index.json')
+  .then(r => r.json())
+  .then(countries => {
+    const sel = document.getElementById('country');
+    countries.forEach(c => {
+      let o = document.createElement('option');
+      o.value = c;
+      o.textContent = c;
+      sel.appendChild(o);
+    });
+    loadData();
+  });
+
+function loadData(){
+  const country = document.getElementById('country').value;
+
+  fetch(`data/${country}.csv`)
+    .then(r => r.text())
+    .then(text => {
+      const rows = text.trim().split('\n').slice(1);
+      const data = rows.map(r => r.split(','));
+
+      const dates = data.map(r => r[0]);
+      const prices = data.map(r => parseFloat(r[1]));
+
+      const last = prices.at(-1);
+      const prev = prices.at(-2);
+
+      const trendEl = document.getElementById('trend');
+
+      if(prev){
+        const diff = last - prev;
+        if(diff > 0){
+          trendEl.textContent = `Stijging: +${diff.toFixed(3)}`;
+          trendEl.className = "trend-up";
+        } else {
+          trendEl.textContent = `Daling: ${diff.toFixed(3)}`;
+          trendEl.className = "trend-down";
+        }
+      }
+
+      document.getElementById('title').textContent = country;
+
+      if(chart) chart.destroy();
+
+      chart = new Chart(document.getElementById('chart'), {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Prijs',
+            data: prices
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } }
+        }
+      });
+    });
+}
+</script>
 
 </body>
 </html>
