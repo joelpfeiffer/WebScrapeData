@@ -7,7 +7,6 @@
   --active: #22c55e;
 }
 
-/* BASE */
 body {
   font-family: system-ui;
   background: var(--bg);
@@ -16,7 +15,6 @@ body {
   padding: 20px;
 }
 
-/* NAV */
 .nav {
   margin-bottom: 20px;
 }
@@ -35,7 +33,6 @@ body {
   background: var(--accent);
 }
 
-/* CARD */
 .card {
   background: var(--card);
   padding: 20px;
@@ -43,7 +40,6 @@ body {
   margin-bottom: 20px;
 }
 
-/* BUTTONS */
 button {
   padding: 10px 14px;
   border-radius: 6px;
@@ -57,25 +53,20 @@ button {
   box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
-/* hover lift */
 button:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 14px rgba(0,0,0,0.4);
 }
 
-/* klik indruk effect */
 button:active {
   transform: scale(0.92);
   background: #2563eb;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-/* actieve selectie (bonus gradient) */
 button.active {
   background: linear-gradient(135deg, #22c55e, #16a34a);
 }
 
-/* SELECT */
 select {
   padding: 10px;
   border-radius: 6px;
@@ -83,16 +74,8 @@ select {
   margin-right: 10px;
   background: var(--accent);
   color: white;
-
-  transition: all 0.2s ease;
 }
 
-select:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent);
-}
-
-/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -103,11 +86,5 @@ td, th {
   border-bottom: 1px solid var(--border);
 }
 
-/* TREND */
-.trend-up {
-  color: #22c55e;
-}
-
-.trend-down {
-  color: #ef4444;
-}
+.trend-up { color: #22c55e; }
+.trend-down { color: #ef4444; }
