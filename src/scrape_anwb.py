@@ -54,8 +54,8 @@ def generate_json(countries):
         }
 
     with open(os.path.join(base, "all.json"), "w") as f:
-        json.dump(output, f)
-
+        json.dump(output, f, ensure_ascii=False)
+        
 def scrape():
     today = get_today_date()
 
