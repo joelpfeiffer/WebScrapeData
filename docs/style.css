@@ -1,44 +1,112 @@
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #e2e8f0;
+  --accent: #3b82f6;
+  --border: #334155;
+  --active: #22c55e;
+}
+
+/* BASE */
 body {
   font-family: system-ui;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
   padding: 20px;
+}
+
+/* NAV */
+.nav {
+  margin-bottom: 20px;
 }
 
 .nav a {
   margin-right: 10px;
-  color: white;
   text-decoration: none;
-  background: #1e293b;
+  color: var(--text);
   padding: 8px 12px;
   border-radius: 6px;
+  background: var(--card);
+  transition: all 0.2s ease;
 }
 
+.nav a:hover {
+  background: var(--accent);
+}
+
+/* CARD */
 .card {
-  background: #1e293b;
+  background: var(--card);
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 12px;
   margin-bottom: 20px;
 }
 
-button, select {
-  padding: 10px;
-  margin-right: 10px;
-  background: #3b82f6;
-  color: white;
-  border: none;
+/* BUTTONS */
+button {
+  padding: 10px 14px;
   border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: white;
   cursor: pointer;
+  margin-right: 8px;
+
+  transition: all 0.15s ease;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
+/* hover */
+button:hover {
+  filter: brightness(1.1);
+}
+
+/* klik animatie */
+button:active {
+  transform: scale(0.95);
+  opacity: 0.85;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* actieve knop */
+button.active {
+  background: var(--active);
+}
+
+/* SELECT */
+select {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  margin-right: 10px;
+  background: var(--accent);
+  color: white;
+
+  transition: all 0.2s ease;
+}
+
+select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* TABLE */
 table {
   width: 100%;
+  border-collapse: collapse;
 }
 
 td, th {
   padding: 10px;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--border);
 }
 
-.trend-up { color: #22c55e; }
-.trend-down { color: #ef4444; }
+/* TREND */
+.trend-up {
+  color: #22c55e;
+}
+
+.trend-down {
+  color: #ef4444;
+}
