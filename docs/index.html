@@ -12,7 +12,7 @@
 
 <body>
 
-<h1>Dashboard</h1>
+<h1>Brandstofprijzen Dashboard</h1>
 
 <div class="card">
   <select id="country"></select>
@@ -20,8 +20,10 @@
   <button onclick="downloadCSV()">Download CSV</button>
 </div>
 
+<!-- RANGE -->
 <div class="card">
   <strong>Periode:</strong>
+
   <button class="range-btn active" onclick="setRange(this,null)">Alles</button>
   <button class="range-btn" onclick="setRange(this,7)">1 week</button>
   <button class="range-btn" onclick="setRange(this,14)">2 weken</button>
@@ -32,6 +34,7 @@
   <button class="range-btn" onclick="setRange(this,730)">2 jaar</button>
 </div>
 
+<!-- MAIN GRAPH -->
 <div class="card" id="chartCard">
   <button onclick="toggleFullscreen('chartCard')">Fullscreen</button>
 
@@ -40,25 +43,63 @@
   </div>
 </div>
 
+<!-- COMPARE GRAPH -->
+<div class="card" id="compareCard">
+  <h2>Vergelijk landen</h2>
+
+  <div class="compare-controls">
+
+    <select id="multiCountry" multiple size="6"></select>
+
+    <div class="fuel-select">
+      <strong>Brandstof:</strong><br>
+      <select id="compareFuel"></select>
+    </div>
+
+    <button onclick="compareCountries()">Vergelijk</button>
+
+  </div>
+
+  <button onclick="toggleFullscreen('compareCard')">Fullscreen</button>
+
+  <div class="chart-container">
+    <canvas id="compareChart"></canvas>
+  </div>
+</div>
+
 <script>
 let allData = {};
 let chart;
+let compareChart;
 let currentRange = null;
 
+// INIT
 fetch('data/all.json')
 .then(r=>r.json())
 .then(data=>{
   allData = data;
 
-  const sel = document.getElementById('country');
+  const countrySel = document.getElementById('country');
+  const multiSel = document.getElementById('multiCountry');
 
   Object.keys(data).forEach(c=>{
-    sel.innerHTML += `<option value="${c}">${c}</option>`;
+    const name = c.charAt(0).toUpperCase()+c.slice(1);
+
+    countrySel.innerHTML += `<option value="${c}">${name}</option>`;
+    multiSel.innerHTML += `<option value="${c}">${name}</option>`;
+  });
+
+  const fuels = data[Object.keys(data)[0]].header.slice(1);
+  const fuelSel = document.getElementById('compareFuel');
+
+  fuels.forEach((f,i)=>{
+    fuelSel.innerHTML += `<option value="${i+1}">${f}</option>`;
   });
 
   loadData();
 });
 
+// RANGE
 function setRange(btn,days){
   currentRange = days;
 
@@ -68,6 +109,12 @@ function setRange(btn,days){
   loadData();
 }
 
+function getColor(i){
+  const c = ["#3b82f6","#22c55e","#f59e0b","#ef4444","#a855f7","#06b6d4"];
+  return c[i % c.length];
+}
+
+// MAIN GRAPH (ALLE BRANDSTOFFEN)
 function loadData(){
   const c = document.getElementById('country').value;
   let rows = allData[c].data;
@@ -75,30 +122,91 @@ function loadData(){
   if(currentRange) rows = rows.slice(-currentRange);
 
   const labels = rows.map(r=>r[0]);
+  const fuels = allData[c].header.slice(1);
 
-  const data = rows.map(r=>parseFloat(r[1]));
+  const datasets = fuels.map((f,i)=>({
+    label:f,
+    data:rows.map(r=>parseFloat(r[i+1])),
+    borderColor:getColor(i),
+    tension:0.2
+  }));
 
   if(chart) chart.destroy();
 
   chart = new Chart(document.getElementById('chart'), {
     type:'line',
-    data:{
-      labels,
-      datasets:[{label:"Prijs", data}]
-    },
+    data:{labels,datasets},
     options:{
       responsive:true,
       maintainAspectRatio:false,
       plugins:{
+        legend:{
+          onClick:(e,i,l)=>{
+            const ci=l.chart;
+            ci.data.datasets[i.datasetIndex].hidden =
+              !ci.data.datasets[i.datasetIndex].hidden;
+            ci.update();
+          }
+        },
         zoom:{
-          pan:{enabled:true},
-          zoom:{wheel:{enabled:true}}
+          pan:{enabled:true,mode:'x'},
+          zoom:{wheel:{enabled:true},mode:'x'}
         }
       }
     }
   });
 
   chart.canvas.ondblclick = () => chart.resetZoom();
+}
+
+// COMPARE GRAPH
+function compareCountries(){
+  const sel = Array.from(document.getElementById('multiCountry').selectedOptions)
+    .map(o=>o.value);
+
+  if(sel.length === 0) return;
+
+  const fuel = parseInt(document.getElementById('compareFuel').value);
+
+  const datasets = sel.map((c,i)=>{
+    let rows = allData[c].data;
+    if(currentRange) rows = rows.slice(-currentRange);
+
+    return {
+      label:c,
+      data:rows.map(r=>parseFloat(r[fuel])),
+      borderColor:getColor(i)
+    };
+  });
+
+  const labels = allData[sel[0]].data.map(r=>r[0]);
+
+  if(compareChart) compareChart.destroy();
+
+  compareChart = new Chart(document.getElementById('compareChart'), {
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{
+          onClick:(e,i,l)=>{
+            const ci=l.chart;
+            ci.data.datasets[i.datasetIndex].hidden =
+              !ci.data.datasets[i.datasetIndex].hidden;
+            ci.update();
+          }
+        },
+        zoom:{
+          pan:{enabled:true,mode:'x'},
+          zoom:{wheel:{enabled:true},mode:'x'}
+        }
+      }
+    }
+  });
+
+  compareChart.canvas.ondblclick = () => compareChart.resetZoom();
 }
 
 // FULLSCREEN
@@ -108,7 +216,22 @@ function toggleFullscreen(id){
 
   setTimeout(()=>{
     if(chart) chart.resize();
+    if(compareChart) compareChart.resize();
   },300);
+}
+
+// DOWNLOAD
+function downloadCSV(){
+  const c = document.getElementById('country').value;
+  const d = allData[c];
+
+  let csv = d.header.join(",")+"\\n";
+  d.data.forEach(r=>csv+=r.join(",")+"\\n");
+
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv]));
+  a.download=c+".csv";
+  a.click();
 }
 </script>
 
