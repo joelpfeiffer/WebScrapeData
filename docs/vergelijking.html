@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Vergelijking</title>
+
 <link rel="stylesheet" href="style.css">
 </head>
 
@@ -17,54 +18,86 @@
 
 <div class="card">
   <button onclick="load()">Laden</button>
-  <button onclick="sort()">Sorteer op prijs</button>
+  <button onclick="sort()">Sorteer op Euro95</button>
 
   <table>
-    <thead>
-      <tr>
-        <th>Land</th>
-        <th>Euro95</th>
-      </tr>
-    </thead>
+    <thead id="thead"></thead>
     <tbody id="body"></tbody>
   </table>
 </div>
 
 <script>
 let data = [];
+let headers = [];
 
 function load(){
-  document.getElementById('body').innerHTML = "Laden...";
+  const body = document.getElementById('body');
+  body.innerHTML = "Laden...";
 
   fetch('data/all.json')
-  .then(r=>r.json())
-  .then(d=>{
-    data = [];
+    .then(r => r.json())
+    .then(d => {
 
-    for(const c in d){
-      const last = d[c].data.at(-1);
-      data.push({
-        land:c,
-        prijs:parseFloat(last[1])
-      });
-    }
+      data = [];
 
-    render();
-  });
+      const firstKey = Object.keys(d)[0];
+      headers = d[firstKey].header;
+
+      // 🔹 Header bouwen
+      const thead = document.getElementById('thead');
+      thead.innerHTML = `
+        <tr>
+          <th>Land</th>
+          ${headers.slice(1).map(h => `<th>${h}</th>`).join("")}
+        </tr>
+      `;
+
+      // 🔹 Data verzamelen
+      for(const c in d){
+        const last = d[c].data.at(-1);
+
+        if(!last) continue;
+
+        data.push({
+          land: capitalize(c),
+          values: last.slice(1)
+        });
+      }
+
+      render();
+    });
 }
 
 function render(){
-  const b = document.getElementById('body');
-  b.innerHTML = "";
+  const body = document.getElementById('body');
+  body.innerHTML = "";
 
-  data.forEach(d=>{
-    b.innerHTML += `<tr><td>${d.land}</td><td>${d.prijs.toFixed(3)}</td></tr>`;
+  data.forEach(d => {
+    const cells = d.values.map(v => {
+      const num = parseFloat(v);
+      return `<td>${!isNaN(num) ? num.toFixed(3) : "-"}</td>`;
+    }).join("");
+
+    body.innerHTML += `
+      <tr>
+        <td>${d.land}</td>
+        ${cells}
+      </tr>
+    `;
   });
 }
 
 function sort(){
-  data.sort((a,b)=>a.prijs-b.prijs);
+  // Sorteer op eerste brandstof (Euro95)
+  data.sort((a,b) => {
+    return parseFloat(a.values[0]) - parseFloat(b.values[0]);
+  });
+
   render();
+}
+
+function capitalize(str){
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 </script>
 
