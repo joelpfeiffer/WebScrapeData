@@ -26,14 +26,14 @@
 <!-- RANGE -->
 <div class="card">
   <strong>Periode:</strong>
-  <button class="range-btn active" onclick="setRange(event, null)">Alles</button>
-  <button class="range-btn" onclick="setRange(event, 7)">1 week</button>
-  <button class="range-btn" onclick="setRange(event, 14)">2 weken</button>
-  <button class="range-btn" onclick="setRange(event, 30)">1 maand</button>
-  <button class="range-btn" onclick="setRange(event, 60)">2 maanden</button>
-  <button class="range-btn" onclick="setRange(event, 180)">6 maanden</button>
-  <button class="range-btn" onclick="setRange(event, 365)">1 jaar</button>
-  <button class="range-btn" onclick="setRange(event, 730)">2 jaar</button>
+  <button class="range-btn active" onclick="setRange(this, null)">Alles</button>
+  <button class="range-btn" onclick="setRange(this, 7)">1 week</button>
+  <button class="range-btn" onclick="setRange(this, 14)">2 weken</button>
+  <button class="range-btn" onclick="setRange(this, 30)">1 maand</button>
+  <button class="range-btn" onclick="setRange(this, 60)">2 maanden</button>
+  <button class="range-btn" onclick="setRange(this, 180)">6 maanden</button>
+  <button class="range-btn" onclick="setRange(this, 365)">1 jaar</button>
+  <button class="range-btn" onclick="setRange(this, 730)">2 jaar</button>
 </div>
 
 <div class="card">
@@ -41,94 +41,42 @@
   <canvas id="chart"></canvas>
 </div>
 
-<!-- COMPARE -->
-<div class="card">
-  <h2>Vergelijk landen</h2>
-
-  <select id="multiCountry" multiple size="6"></select>
-
-  <div style="margin-top:10px;">
-    <strong>Brandstof:</strong>
-    <select id="compareFuel"></select>
-  </div>
-
-  <button onclick="compareCountries()">Vergelijk</button>
-
-  <canvas id="compareChart"></canvas>
-</div>
-
-<!-- TOP 5 -->
-<div class="card">
-  <h2>Top 5 goedkoopste landen (Euro95)</h2>
-  <ol id="top5"></ol>
-</div>
-
 <script>
 let allData = {};
 let chart;
-let compareChart;
 let currentRange = null;
 
-// INIT
 fetch('data/all.json')
 .then(r => r.json())
 .then(data => {
   allData = data;
 
-  const countrySel = document.getElementById('country');
-  const multiSel = document.getElementById('multiCountry');
+  const sel = document.getElementById('country');
 
   Object.keys(data).forEach(c => {
-    let name = capitalize(c);
-
-    let o1 = document.createElement('option');
-    o1.value = c;
-    o1.textContent = name;
-    countrySel.appendChild(o1);
-
-    let o2 = document.createElement('option');
-    o2.value = c;
-    o2.textContent = name;
-    multiSel.appendChild(o2);
-  });
-
-  const first = Object.keys(data)[0];
-  const fuels = data[first].header.slice(1);
-
-  const fuelSel = document.getElementById('compareFuel');
-
-  fuels.forEach((f, i) => {
     let o = document.createElement('option');
-    o.value = i + 1;
-    o.textContent = f;
-    fuelSel.appendChild(o);
+    o.value = c;
+    o.textContent = c.charAt(0).toUpperCase() + c.slice(1);
+    sel.appendChild(o);
   });
 
   loadData();
-  buildTop5();
 });
 
-// HELPERS
-function capitalize(str){
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function getColor(i){
-  const colors = ["#3b82f6","#22c55e","#f59e0b","#ef4444","#a855f7","#06b6d4"];
-  return colors[i % colors.length];
-}
-
-// RANGE
-function setRange(e, days){
+function setRange(btn, days){
   currentRange = days;
 
   document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
-  e.target.classList.add('active');
+  btn.classList.add('active');
 
   loadData();
 }
 
-// MAIN GRAPH
+function getColor(i){
+  const colors = ["#3b82f6","#22c55e","#f59e0b","#ef4444","#a855f7"];
+  return colors[i % colors.length];
+}
+
 function loadData(){
   const country = document.getElementById('country').value;
   const d = allData[country];
@@ -146,20 +94,6 @@ function loadData(){
     tension: 0.2
   }));
 
-  const prices = rows.map(r => parseFloat(r[1]));
-  const last = prices.at(-1);
-  const prev = prices.at(-2);
-
-  const trendEl = document.getElementById('trend');
-
-  if(prev){
-    const diff = last - prev;
-    trendEl.textContent = diff > 0
-      ? `Stijging (Euro95): +${diff.toFixed(3)}`
-      : `Daling (Euro95): ${diff.toFixed(3)}`;
-    trendEl.className = diff > 0 ? "trend-up" : "trend-down";
-  }
-
   if(chart) chart.destroy();
 
   chart = new Chart(document.getElementById('chart'), {
@@ -168,62 +102,12 @@ function loadData(){
   });
 }
 
-// COMPARE
-function compareCountries(){
-  const selected = Array.from(document.getElementById('multiCountry').selectedOptions)
-    .map(o => o.value);
-
-  const fuelIndex = parseInt(document.getElementById('compareFuel').value);
-
-  const datasets = selected.map((c,i)=>{
-    let rows = allData[c].data;
-    if(currentRange) rows = rows.slice(-currentRange);
-
-    return {
-      label: capitalize(c),
-      data: rows.map(r => parseFloat(r[fuelIndex])),
-      borderColor: getColor(i)
-    };
-  });
-
-  const labels = allData[selected[0]].data.map(r => r[0]);
-
-  if(compareChart) compareChart.destroy();
-
-  compareChart = new Chart(document.getElementById('compareChart'), {
-    type: 'line',
-    data: { labels: labels, datasets: datasets }
-  });
-}
-
-// TOP 5
-function buildTop5(){
-  let list = [];
-
-  for(const c in allData){
-    const last = allData[c].data.at(-1);
-    list.push({ land:c, prijs:parseFloat(last[1]) });
-  }
-
-  list.sort((a,b)=>a.prijs-b.prijs);
-
-  const el = document.getElementById('top5');
-  el.innerHTML = "";
-
-  list.slice(0,5).forEach(i=>{
-    let li = document.createElement('li');
-    li.textContent = `${capitalize(i.land)} - ${i.prijs.toFixed(3)}`;
-    el.appendChild(li);
-  });
-}
-
-// DOWNLOAD
 function downloadCSV(){
   const country = document.getElementById('country').value;
   const d = allData[country];
 
-  let csv = d.header.join(",") + "\n";
-  d.data.forEach(r => csv += r.join(",") + "\n");
+  let csv = d.header.join(",") + "\\n";
+  d.data.forEach(r => csv += r.join(",") + "\\n");
 
   const blob = new Blob([csv]);
   const a = document.createElement('a');
