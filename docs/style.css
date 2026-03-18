@@ -57,7 +57,17 @@ button.active {
 
 .range-btn { min-width: 90px; }
 
-/* CHART SIZE */
+/* SELECT */
+select {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  margin-right: 10px;
+  background: var(--accent);
+  color: white;
+}
+
+/* CHART */
 .chart-container {
   height: 300px;
   position: relative;
@@ -73,4 +83,30 @@ button.active {
   z-index: 9999;
   background: #0f172a;
   padding: 20px;
+}
+
+/* COMPARE LAYOUT */
+.compare-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.fuel-select {
+  margin-top: 10px;
+}
+
+#multiCountry {
+  margin-bottom: 10px;
+}
+
+/* BUTTONS NAAST ELKAAR */
+.compare-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.compare-buttons button {
+  flex: 1;
 }
