@@ -2,8 +2,12 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<title>Vergelijking</title>
+<title>Dashboard</title>
+
 <link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 </head>
 
 <body>
@@ -13,62 +17,197 @@
   <a href="vergelijking.html">Vergelijking</a>
 </div>
 
-<h1>Vergelijk landen</h1>
+<h1>Brandstofprijzen Dashboard</h1>
 
 <div class="card">
-  <button onclick="load()">Laden</button>
-  <button onclick="sort()">Sorteer op Euro95</button>
+  <select id="country"></select>
+  <button onclick="loadData()">Laden</button>
+  <button onclick="downloadCSV()">Download CSV</button>
+</div>
 
-  <table>
-    <thead id="thead"></thead>
-    <tbody id="body"></tbody>
-  </table>
+<!-- RANGE -->
+<div class="card">
+  <strong>Periode:</strong>
+
+  <button class="range-btn active" onclick="setRange(this, null)">Alles</button>
+  <button class="range-btn" onclick="setRange(this, 7)">1 week</button>
+  <button class="range-btn" onclick="setRange(this, 14)">2 weken</button>
+  <button class="range-btn" onclick="setRange(this, 30)">1 maand</button>
+  <button class="range-btn" onclick="setRange(this, 60)">2 maanden</button>
+  <button class="range-btn" onclick="setRange(this, 180)">6 maanden</button>
+  <button class="range-btn" onclick="setRange(this, 365)">1 jaar</button>
+  <button class="range-btn" onclick="setRange(this, 730)">2 jaar</button>
+</div>
+
+<div class="card">
+  <canvas id="chart" title="Scroll = zoom, slepen = pan, dubbelklik = reset"></canvas>
+</div>
+
+<!-- COMPARE -->
+<div class="card">
+  <h2>Vergelijk landen</h2>
+
+  <div class="compare-controls">
+
+    <select id="multiCountry" multiple size="6"></select>
+
+    <div class="fuel-select">
+      <strong>Brandstof:</strong><br>
+      <select id="compareFuel"></select>
+    </div>
+
+    <button onclick="compareCountries()">Vergelijk</button>
+
+  </div>
+
+  <canvas id="compareChart"></canvas>
 </div>
 
 <script>
-let data = [];
+let allData = {};
+let chart;
+let compareChart;
+let currentRange = null;
 
-function load(){
-  document.getElementById('body').innerHTML = "Laden...";
+fetch('data/all.json')
+.then(r => r.json())
+.then(data => {
+  allData = data;
 
-  fetch('data/all.json')
-  .then(r=>r.json())
-  .then(d=>{
-    const headers = d[Object.keys(d)[0]].header;
+  const countrySel = document.getElementById('country');
+  const multiSel = document.getElementById('multiCountry');
 
-    document.getElementById('thead').innerHTML =
-      "<tr><th>Land</th>" +
-      headers.slice(1).map(h => `<th>${h}</th>`).join("") +
-      "</tr>";
+  Object.keys(data).forEach(c => {
+    const name = c.charAt(0).toUpperCase() + c.slice(1);
 
-    data = [];
+    countrySel.innerHTML += `<option value="${c}">${name}</option>`;
+    multiSel.innerHTML += `<option value="${c}">${name}</option>`;
+  });
 
-    for(const c in d){
-      const last = d[c].data.at(-1);
-      data.push({ land:c, values:last.slice(1) });
+  const fuels = data[Object.keys(data)[0]].header.slice(1);
+  const fuelSel = document.getElementById('compareFuel');
+
+  fuels.forEach((f,i)=>{
+    fuelSel.innerHTML += `<option value="${i+1}">${f}</option>`;
+  });
+
+  loadData();
+});
+
+function setRange(btn, days){
+  currentRange = days;
+
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  loadData();
+}
+
+function getColor(i){
+  const c = ["#3b82f6","#22c55e","#f59e0b","#ef4444","#a855f7"];
+  return c[i % c.length];
+}
+
+function loadData(){
+  const c = document.getElementById('country').value;
+  let rows = allData[c].data;
+
+  if(currentRange) rows = rows.slice(-currentRange);
+
+  const labels = rows.map(r => r[0]);
+  const fuels = allData[c].header.slice(1);
+
+  const datasets = fuels.map((f,i)=>({
+    label:f,
+    data:rows.map(r=>parseFloat(r[i+1])),
+    borderColor:getColor(i),
+    tension:0.2
+  }));
+
+  if(chart) chart.destroy();
+
+  chart = new Chart(document.getElementById('chart'), {
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      plugins:{
+        legend:{
+          onClick:(e,i,l)=>{
+            const ci=l.chart;
+            ci.data.datasets[i.datasetIndex].hidden =
+              !ci.data.datasets[i.datasetIndex].hidden;
+            ci.update();
+          }
+        },
+        zoom:{
+          pan:{enabled:true,mode:'x'},
+          zoom:{wheel:{enabled:true},mode:'x'}
+        }
+      }
     }
-
-    render();
   });
+
+  chart.canvas.ondblclick = () => chart.resetZoom();
 }
 
-function render(){
-  const b = document.getElementById('body');
-  b.innerHTML = "";
+function compareCountries(){
+  const sel = Array.from(document.getElementById('multiCountry').selectedOptions)
+    .map(o=>o.value);
 
-  data.forEach(d=>{
-    const cells = d.values.map(v => {
-      const num = parseFloat(v);
-      return `<td>${!isNaN(num)?num.toFixed(3):"-"}</td>`;
-    }).join("");
+  if(sel.length === 0) return;
 
-    b.innerHTML += `<tr><td>${d.land}</td>${cells}</tr>`;
+  const fuel = parseInt(document.getElementById('compareFuel').value);
+
+  const datasets = sel.map((c,i)=>{
+    let rows = allData[c].data;
+    if(currentRange) rows = rows.slice(-currentRange);
+
+    return {
+      label:c,
+      data:rows.map(r=>parseFloat(r[fuel])),
+      borderColor:getColor(i)
+    };
   });
+
+  const labels = allData[sel[0]].data.map(r=>r[0]);
+
+  if(compareChart) compareChart.destroy();
+
+  compareChart = new Chart(document.getElementById('compareChart'), {
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      plugins:{
+        legend:{
+          onClick:(e,i,l)=>{
+            const ci=l.chart;
+            ci.data.datasets[i.datasetIndex].hidden =
+              !ci.data.datasets[i.datasetIndex].hidden;
+            ci.update();
+          }
+        },
+        zoom:{
+          pan:{enabled:true,mode:'x'},
+          zoom:{wheel:{enabled:true},mode:'x'}
+        }
+      }
+    }
+  });
+
+  compareChart.canvas.ondblclick = () => compareChart.resetZoom();
 }
 
-function sort(){
-  data.sort((a,b)=>parseFloat(a.values[0]) - parseFloat(b.values[0]));
-  render();
+function downloadCSV(){
+  const c = document.getElementById('country').value;
+  const d = allData[c];
+
+  let csv = d.header.join(",")+"\\n";
+  d.data.forEach(r=>csv+=r.join(",")+"\\n");
+
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv]));
+  a.download=c+".csv";
+  a.click();
 }
 </script>
 
