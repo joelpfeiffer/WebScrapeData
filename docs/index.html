@@ -1,82 +1,39 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-<meta charset="UTF-8">
-<title>Dashboard</title>
-
-<link rel="stylesheet" href="style.css">
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-</head>
-
-<body>
-
-<div class="nav">
-  <a href="index.html" class="active">Dashboard</a>
-  <a href="vergelijking.html">Vergelijking</a>
-</div>
-
-<h1>Brandstofprijzen Dashboard</h1>
-
-<div class="card">
-  <select id="country"></select>
-  <button onclick="loadData()">Laden</button>
-  <button onclick="downloadCSV()">Download CSV</button>
-</div>
-
-<div class="card">
-  <strong>Periode:</strong>
-
-  <button class="range-btn active" onclick="setRange(this,null)">Alles</button>
-  <button class="range-btn" onclick="setRange(this,7)">1 week</button>
-  <button class="range-btn" onclick="setRange(this,14)">2 weken</button>
-  <button class="range-btn" onclick="setRange(this,30)">1 maand</button>
-  <button class="range-btn" onclick="setRange(this,60)">2 maanden</button>
-  <button class="range-btn" onclick="setRange(this,180)">6 maanden</button>
-  <button class="range-btn" onclick="setRange(this,365)">1 jaar</button>
-  <button class="range-btn" onclick="setRange(this,730)">2 jaar</button>
-</div>
-
-<!-- MAIN GRAPH -->
-<div class="card" id="chartCard">
-  <button onclick="toggleFullscreen('chartCard')">Fullscreen</button>
-
-  <div class="chart-container">
-    <canvas id="chart"></canvas>
-  </div>
-</div>
-
-<!-- COMPARE -->
-<div class="card" id="compareCard">
-  <h2>Vergelijk landen</h2>
-
-  <div class="compare-controls">
-
-    <select id="multiCountry" multiple size="6"></select>
-
-    <div class="fuel-select">
-      <strong>Brandstof:</strong><br>
-      <select id="compareFuel"></select>
-    </div>
-
-    <div class="compare-buttons">
-      <button onclick="compareCountries()">Vergelijk</button>
-      <button onclick="toggleFullscreen('compareCard')">Fullscreen</button>
-    </div>
-
-  </div>
-
-  <div class="chart-container">
-    <canvas id="compareChart"></canvas>
-  </div>
-</div>
-
 <script>
 let allData = {};
 let chart;
 let compareChart;
 let currentRange = null;
+
+/* ================= UTIL ================= */
+
+// Datum parser (werkt met 2026-03-21 én 17-03-2026)
+function parseDate(d){
+  if(d.includes("-") && d.split("-")[0].length === 4){
+    return new Date(d); // ISO
+  } else {
+    const [day,month,year] = d.split("-");
+    return new Date(`${year}-${month}-${day}`);
+  }
+}
+
+// Data opschonen
+function cleanData(rows){
+
+  // verwijder dubbele datums
+  const unique = rows.filter((row, index, self) =>
+    index === self.findIndex(r => r[0] === row[0])
+  );
+
+  // sorteer op datum
+  unique.sort((a,b)=> parseDate(a[0]) - parseDate(b[0]));
+
+  return unique;
+}
+
+function getColor(i){
+  const c = ["#3b82f6","#22c55e","#f59e0b","#ef4444","#a855f7","#06b6d4"];
+  return c[i % c.length];
+}
 
 /* ================= CROSSHAIR ================= */
 const crosshairPlugin = {
@@ -136,26 +93,29 @@ function setRange(btn,days){
   loadData();
 }
 
-function getColor(i){
-  const c = ["#3b82f6","#22c55e","#f59e0b","#ef4444","#a855f7","#06b6d4"];
-  return c[i % c.length];
-}
-
 /* ================= MAIN GRAPH ================= */
 function loadData(){
   const c = document.getElementById('country').value;
-  let rows = allData[c].data;
+  let rows = [...allData[c].data];
 
-  if(currentRange) rows = rows.slice(-currentRange);
+  rows = cleanData(rows);
+
+  if(currentRange !== null){
+    rows = rows.slice(-currentRange);
+  }
 
   const labels = rows.map(r=>r[0]);
   const fuels = allData[c].header.slice(1);
 
   const datasets = fuels.map((f,i)=>({
     label:f,
-    data:rows.map(r=>parseFloat(r[i+1])),
+    data:rows.map(r=>{
+      const val = parseFloat(r[i+1]);
+      return isNaN(val) ? null : val;
+    }),
     borderColor:getColor(i),
-    tension:0.2
+    tension:0.2,
+    spanGaps:true
   }));
 
   if(chart) chart.destroy();
@@ -173,7 +133,9 @@ function loadData(){
       plugins:{
         tooltip:{
           callbacks:{
-            label: ctx => `${ctx.dataset.label}: € ${ctx.raw.toFixed(3)}`
+            label: ctx => ctx.raw !== null
+              ? `${ctx.dataset.label}: € ${ctx.raw.toFixed(3)}`
+              : `${ctx.dataset.label}: geen data`
           }
         },
         zoom:{
@@ -184,6 +146,9 @@ function loadData(){
     },
     plugins:[crosshairPlugin]
   });
+
+  // 🔥 FIX: altijd resetten
+  chart.resetZoom();
 
   chart.canvas.ondblclick = () => chart.resetZoom();
 }
@@ -200,18 +165,31 @@ function compareCountries(){
 
   const fuel = parseInt(document.getElementById('compareFuel').value);
 
+  let baseRows = cleanData([...allData[sel[0]].data]);
+
+  if(currentRange !== null){
+    baseRows = baseRows.slice(-currentRange);
+  }
+
+  const labels = baseRows.map(r=>r[0]);
+
   const datasets = sel.map((c,i)=>{
-    let rows = allData[c].data;
-    if(currentRange) rows = rows.slice(-currentRange);
+    let rows = cleanData([...allData[c].data]);
+
+    if(currentRange !== null){
+      rows = rows.slice(-currentRange);
+    }
 
     return {
       label:c,
-      data:rows.map(r=>parseFloat(r[fuel])),
-      borderColor:getColor(i)
+      data:rows.map(r=>{
+        const val = parseFloat(r[fuel]);
+        return isNaN(val) ? null : val;
+      }),
+      borderColor:getColor(i),
+      spanGaps:true
     };
   });
-
-  const labels = allData[sel[0]].data.map(r=>r[0]);
 
   if(compareChart) compareChart.destroy();
 
@@ -235,6 +213,8 @@ function compareCountries(){
     plugins:[crosshairPlugin]
   });
 
+  compareChart.resetZoom();
+
   compareChart.canvas.ondblclick = () => compareChart.resetZoom();
 }
 
@@ -254,10 +234,10 @@ function downloadCSV(){
   const c = document.getElementById('country').value;
   const d = allData[c];
 
-  let csv = "Datum," + d.header.slice(1).join(",") + "\\n";
+  let csv = "Datum," + d.header.slice(1).join(",") + "\n";
 
   d.data.forEach(row=>{
-    csv += row[0] + "," + row.slice(1).join(",") + "\\n";
+    csv += row[0] + "," + row.slice(1).join(",") + "\n";
   });
 
   const a=document.createElement('a');
@@ -266,6 +246,3 @@ function downloadCSV(){
   a.click();
 }
 </script>
-
-</body>
-</html>
